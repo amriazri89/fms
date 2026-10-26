@@ -37,7 +37,8 @@ public record CustomerDto(int Id, string Name, string? ContactPerson, string? Ph
     string? RegistrationNo, string? Tag, string? Notes, bool IsActive, DateTime CreatedAt);
 
 public record CustomerListItem(int Id, string Name, string? ContactPerson, string? Phone, string? Tag, bool IsActive,
-    decimal TotalInvoiced, decimal TotalPaid, decimal Outstanding, int OverdueInvoices, int OpenQuotations, DateOnly? LastActivity);
+    decimal TotalInvoiced, decimal TotalPaid, decimal Outstanding, int OverdueInvoices, int OpenQuotations, DateOnly? LastActivity,
+    decimal CreditBalance);
 
 public record CustomerActivityInput(DateOnly Date, CustomerActivityType Type, [Required, MaxLength(1000)] string Note, DateOnly? FollowUpDate);
 
@@ -125,4 +126,5 @@ public record ReceiptDto(
 
 // ---------- Ringkasan ----------
 public record ReceivableItemDto(int CustomerId, string Name, decimal Outstanding, int OverdueCount);
-public record ReceivablesDto(decimal Total, decimal Overdue, int InvoiceCount, IReadOnlyList<ReceivableItemDto> TopCustomers);
+public record ReceivablesDto(decimal Total, decimal Overdue, int InvoiceCount, IReadOnlyList<ReceivableItemDto> TopCustomers,
+    decimal CreditBookTotal, int CreditBookCustomers);

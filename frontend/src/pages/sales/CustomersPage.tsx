@@ -24,11 +24,13 @@ export default function CustomersPage() {
     return () => clearTimeout(h)
   }, [q])
 
-  const rows = [...(data ?? [])].sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : b.outstanding - a.outstanding))
+  // Hutang = baki invois + buku hutang kedai (555)
+  const owed = (c: { outstanding: number; creditBalance: number }) => c.outstanding + c.creditBalance
+  const rows = [...(data ?? [])].sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : owed(b) - owed(a)))
   const t = today()
   const due = followUps.filter((f) => f.followUpDate && f.followUpDate <= t)
   const upcoming = followUps.filter((f) => f.followUpDate && f.followUpDate > t).slice(0, 5)
-  const totalOutstanding = rows.reduce((s, r) => s + r.outstanding, 0)
+  const totalOutstanding = rows.reduce((s, r) => s + owed(r), 0)
 
   return (
     <div className="space-y-4">
@@ -107,7 +109,10 @@ export default function CustomersPage() {
                       <span className="block text-xs text-muted">{c.overdueInvoices > 0 ? `${c.overdueInvoices} tertunggak` : 'belum dibayar'}</span>
                     </>
                   ) : (
-                    <span className="text-xs text-muted">Tiada hutang</span>
+                    c.creditBalance <= 0 && <span className="text-xs text-muted">Tiada hutang</span>
+                  )}
+                  {c.creditBalance > 0 && (
+                    <span className="block text-xs font-semibold text-expense">Buku 555: {formatRM(c.creditBalance)}</span>
                   )}
                 </span>
               </Link>

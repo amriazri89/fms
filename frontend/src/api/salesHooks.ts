@@ -22,7 +22,7 @@ import type {
   SalesFilter,
 } from './types'
 
-const salesKeys = ['customers', 'customer', 'follow-ups', 'quotations', 'quotation', 'invoices', 'invoice', 'receipts', 'receipt']
+const salesKeys = ['customers', 'customer', 'follow-ups', 'quotations', 'quotation', 'invoices', 'invoice', 'receipts', 'receipt', 'credit-book', 'credit-ledger']
 // Resit menjana rekod Duit Masuk, jadi data kewangan juga perlu dimuat semula
 const moneyKeys = ['transactions', 'transaction', 'dashboard', 'report', 'balances']
 

@@ -167,10 +167,12 @@ export default function DashboardPage() {
                 title="Orang hutang kita"
                 action={<Link to="/invois" className="text-sm font-semibold text-brand-600 hover:underline">Invois</Link>}
               >
-                {data.receivables.invoiceCount === 0 ? (
-                  <Empty>Tiada invois belum dibayar.</Empty>
+                {data.receivables.invoiceCount === 0 && data.receivables.creditBookCustomers === 0 ? (
+                  <Empty>Tiada invois atau buku hutang belum dibayar.</Empty>
                 ) : (
                   <>
+                    {data.receivables.invoiceCount > 0 && (
+                    <>
                     <div className="mb-3 flex items-baseline justify-between">
                       <Money value={data.receivables.total} className="text-xl font-extrabold text-ink" />
                       {data.receivables.overdue > 0 && (
@@ -190,6 +192,20 @@ export default function DashboardPage() {
                         </li>
                       ))}
                     </ul>
+                    </>
+                    )}
+                    {data.receivables.creditBookCustomers > 0 && (
+                      <Link
+                        to="/buku-hutang"
+                        className={cx('flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm hover:bg-gray-100', data.receivables.invoiceCount > 0 && 'mt-3')}
+                      >
+                        <span>
+                          <span className="block font-semibold text-ink">Buku hutang (555)</span>
+                          <span className="block text-xs text-muted">{data.receivables.creditBookCustomers} pelanggan</span>
+                        </span>
+                        <Money value={data.receivables.creditBookTotal} className="shrink-0 font-bold text-expense" />
+                      </Link>
+                    )}
                   </>
                 )}
               </Card>

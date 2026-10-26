@@ -510,8 +510,11 @@ public class SalesService(
         await db.SaveChangesAsync();
     }
 
-    /// <summary>Sahkan dan sediakan resit + rekod Duit Masuk. Panggil SaveChanges selepas ini.</summary>
-    private async Task<Payment> BuildPaymentAsync(PaymentInput i, Invoice? inv)
+    /// <summary>
+    /// Sahkan dan sediakan resit + rekod Duit Masuk. Panggil SaveChanges selepas ini.
+    /// Juga digunakan oleh CreditBookService (bayaran buku hutang). Pemanggil mesti pegang WriteLock.
+    /// </summary>
+    internal async Task<Payment> BuildPaymentAsync(PaymentInput i, Invoice? inv)
     {
         var errors = new Dictionary<string, string[]>();
         var amount = Math.Round(i.Amount, 2);
@@ -637,6 +640,9 @@ public class SalesService(
                 .ToListAsync())
             .GroupBy(a => a.CustomerId).ToDictionary(g => g.Key, g => g.Max(a => a.Date));
 
+        var creditBalances = (await CreditBookService.BalancesAsync(db))
+            .GroupBy(b => b.CustomerId).ToDictionary(g => g.Key, g => g.Sum(b => b.Balance));
+
         return customers.Select(c =>
         {
             var list = invoices[c.Id].ToList();
@@ -645,7 +651,8 @@ public class SalesService(
             var overdue = list.Count(i => i.Status != InvoiceStatus.Paid && i.DueDate < today);
             return new CustomerListItem(c.Id, c.Name, c.ContactPerson, c.Phone, c.Tag, c.IsActive,
                 invoiced, paid, invoiced - paid, overdue, openQuotations.GetValueOrDefault(c.Id),
-                lastActivity.TryGetValue(c.Id, out var d) ? d : null);
+                lastActivity.TryGetValue(c.Id, out var d) ? d : null,
+                creditBalances.GetValueOrDefault(c.Id));
         }).ToList();
     }
 
@@ -718,7 +725,8 @@ public class SalesService(
         var c = await db.Customers.FirstOrDefaultAsync(x => x.Id == id) ?? throw new NotFoundException();
         var used = await db.Quotations.AnyAsync(x => x.CustomerId == id)
                    || await db.Invoices.AnyAsync(x => x.CustomerId == id)
-                   || await db.Payments.AnyAsync(x => x.CustomerId == id);
+                   || await db.Payments.AnyAsync(x => x.CustomerId == id)
+                   || await db.CreditSales.AnyAsync(x => x.CustomerId == id);
         if (used) c.IsActive = false;
         else db.Customers.Remove(c);
 

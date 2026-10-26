@@ -326,6 +326,8 @@ export interface CustomerListItem {
   overdueInvoices: number
   openQuotations: number
   lastActivity: string | null
+  /** Baki buku hutang kedai (555), semua perniagaan */
+  creditBalance: number
 }
 
 export interface CustomerActivityInput {
@@ -536,6 +538,91 @@ export interface Receivables {
   overdue: number
   invoiceCount: number
   topCustomers: { customerId: number; name: string; outstanding: number; overdueCount: number }[]
+  /** Buku hutang kedai (555) */
+  creditBookTotal: number
+  creditBookCustomers: number
+}
+
+// ---------- Buku hutang kedai / 555 (Dtos/CreditBookDtos.cs) ----------
+export interface CreditBookFilter {
+  q?: string
+  businessUnitId?: number
+  customerId?: number
+  includeSettled?: boolean
+}
+
+export interface CreditBookRow {
+  customerId: number
+  customerName: string
+  phone: string | null
+  businessUnitId: number
+  businessUnitName: string
+  totalTaken: number
+  totalPaid: number
+  balance: number
+  lastTakenDate: string | null
+  lastPaidDate: string | null
+  /** Barang tertua yang belum dibayar (FIFO) */
+  oldestUnpaidDate: string | null
+}
+
+export interface CreditBookSummary {
+  totalBalance: number
+  customersOwing: number
+  rows: CreditBookRow[]
+}
+
+/** Taken = ambil barang (hutang bertambah), Paid = bayaran / resit (hutang berkurang) */
+export type CreditLineKind = 'Taken' | 'Paid'
+
+export interface CreditLedgerLine {
+  kind: CreditLineKind
+  id: number
+  date: string
+  description: string
+  amount: number
+  /** Baki selepas baris ini; null jika dibatalkan */
+  balance: number | null
+  isVoided: boolean
+  voidReason: string | null
+  receiptNumber: string | null
+  method: PaymentMethod | null
+  createdBy: string
+  createdAt: string
+}
+
+export interface CreditLedger {
+  customerId: number
+  customerName: string
+  phone: string | null
+  contactPerson: string | null
+  businessUnitId: number
+  businessUnitName: string
+  totalTaken: number
+  totalPaid: number
+  balance: number
+  oldestUnpaidDate: string | null
+  /** Ikut tarikh, lama ke baru */
+  lines: CreditLedgerLine[]
+}
+
+export interface CreditSaleInput {
+  customerId: number
+  businessUnitId: number
+  date: string
+  description: string
+  amount: number
+}
+
+export interface CreditPaymentInput {
+  customerId: number
+  businessUnitId: number
+  date: string
+  accountId: number
+  categoryId: number
+  method: PaymentMethod
+  amount: number
+  reference: string | null
 }
 
 // ---------- Pembekal & hutang kita (Dtos/PayableDtos.cs) ----------

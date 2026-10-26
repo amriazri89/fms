@@ -190,6 +190,9 @@ public class Payment
     public string? Reference { get; set; }
     public string? Description { get; set; }
 
+    /// <summary>Bayaran buku hutang kedai (555). Mengurangkan baki hutang pelanggan dalam perniagaan ini.</summary>
+    public bool IsCreditPayment { get; set; }
+
     public bool IsVoided { get; set; }
     public string? VoidReason { get; set; }
     public DateTime? VoidedAt { get; set; }

@@ -113,7 +113,7 @@ public class ReportService(AppDbContext db, IOptions<AppOptions> options)
             upcoming);
     }
 
-    /// <summary>Orang hutang kita: baki invois yang belum dibayar penuh.</summary>
+    /// <summary>Orang hutang kita: baki invois yang belum dibayar penuh + buku hutang kedai (555).</summary>
     public async Task<ReceivablesDto> ReceivablesAsync(int? businessUnitId)
     {
         var today = Today;
@@ -130,11 +130,16 @@ public class ReportService(AppDbContext db, IOptions<AppOptions> options)
             .Take(5)
             .ToList();
 
+        // Buku hutang kedai (555)
+        var credit = (await CreditBookService.BalancesAsync(db, businessUnitId)).Where(b => b.Balance > 0).ToList();
+
         return new ReceivablesDto(
             open.Sum(i => i.Total - i.AmountPaid),
             open.Where(i => i.DueDate < today).Sum(i => i.Total - i.AmountPaid),
             open.Count,
-            top);
+            top,
+            credit.Sum(b => b.Balance),
+            credit.Select(b => b.CustomerId).Distinct().Count());
     }
 
     // ---------------------------------------------------------------- Reports

@@ -78,6 +78,9 @@ export default function CustomerDetailPage() {
               </a>
             </>
           )}
+          <Link to={`/buku-hutang?pelanggan=${id}`} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold hover:bg-brand-50">
+            <Icon name="book" className="h-4 w-4" /> Buku hutang
+          </Link>
           <Button variant="secondary" onClick={() => setEditing(true)}>
             <Icon name="edit" className="h-4 w-4" /> Ubah
           </Button>

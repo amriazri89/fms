@@ -40,6 +40,7 @@ builder.Services.AddScoped<PayablesService>();
 builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<StatementService>();
+builder.Services.AddScoped<CreditBookService>();
 
 // ---------- Auth ----------
 builder.Services

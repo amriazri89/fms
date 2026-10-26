@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
+    public DbSet<CreditSale> CreditSales => Set<CreditSale>();
 
     // Pembekal & hutang kita
     public DbSet<Supplier> Suppliers => Set<Supplier>();
@@ -306,6 +307,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Transaction).WithMany().HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Buku hutang kedai (555)
+        b.Entity<CreditSale>(e =>
+        {
+            e.Property(x => x.Description).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.VoidReason).HasMaxLength(300);
+            e.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.BusinessUnit).WithMany().HasForeignKey(x => x.BusinessUnitId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.CustomerId, x.BusinessUnitId });
+            e.HasIndex(x => x.Date);
         });
 
         b.Entity<DocumentSequence>(e =>

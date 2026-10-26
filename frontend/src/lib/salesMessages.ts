@@ -1,4 +1,4 @@
-import type { Invoice, Quotation, Receipt } from '../api/types'
+import type { CreditLedger, Invoice, Quotation, Receipt } from '../api/types'
 import { formatDate, formatQty, formatRM } from './format'
 
 // Mesej WhatsApp ringkas. Dokumen penuh boleh dihantar sebagai PDF (Cetak → Simpan sebagai PDF).
@@ -46,3 +46,39 @@ export const receiptMessage = (r: Receipt) =>
     '',
     `— ${r.seller.name}`,
   ].join('\n')
+
+/** Barang yang belum dibayar (FIFO — bayaran menutup hutang paling lama dahulu, sama seperti server). */
+export function unpaidCreditItems(l: CreditLedger) {
+  let covered = l.totalPaid
+  const unpaid: { date: string; description: string; amount: number }[] = []
+  for (const x of l.lines.filter((x) => x.kind === 'Taken' && !x.isVoided)) {
+    if (covered >= x.amount) {
+      covered -= x.amount
+      continue
+    }
+    // Barang pertama yang belum lunas mungkin sudah dibayar sebahagian
+    unpaid.push({ date: x.date, description: x.description, amount: x.amount - covered })
+    covered = 0
+  }
+  return unpaid
+}
+
+const MAX_REMINDER_ITEMS = 10
+
+/** Peringatan hutang 555 melalui WhatsApp. */
+export const creditReminderMessage = (l: CreditLedger) => {
+  const items = unpaidCreditItems(l)
+  const shown = items.slice(-MAX_REMINDER_ITEMS)
+  return [
+    greet(l.contactPerson || l.customerName),
+    '',
+    `Peringatan mesra daripada ${l.businessUnitName}. Baki hutang buku 555: *${formatRM(l.balance)}*.`,
+    '',
+    items.length > shown.length ? `(${items.length - shown.length} rekod lebih lama tidak disenaraikan)` : '',
+    shown.map((x) => `• ${formatDate(x.date)} — ${x.description} — ${formatRM(x.amount)}`).join('\n'),
+    '',
+    'Terima kasih.',
+  ]
+    .filter((line, idx, arr) => !(line === '' && arr[idx - 1] === ''))
+    .join('\n')
+}

@@ -31,6 +31,7 @@ const paths = {
   claim: 'M9 3h6l1 2h3v16H5V5h3zM9 12l2 2 4-4',
   statement: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h3M15 15h.01',
   calendar: 'M4 6h16v15H4zM4 10h16M9 3v4M15 3v4',
+  book: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H20v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H20M9 7h7M9 11h5',
 } as const
 
 export type IconName = keyof typeof paths

@@ -30,7 +30,10 @@ public static class SchemaInitializer
     private const string ResourceName = "schema.sql";
 
     /// <summary>Kolum baru untuk jadual lama. Contoh: ("Employees", "Email", "VARCHAR(100) NULL").</summary>
-    private static readonly (string Table, string Column, string Definition)[] AddedColumns = [];
+    private static readonly (string Table, string Column, string Definition)[] AddedColumns =
+    [
+        ("Payments", "IsCreditPayment", "TINYINT(1) NOT NULL DEFAULT 0"),  // buku hutang kedai (555)
+    ];
 
     public static void Apply(AppDbContext db, ILogger logger)
     {

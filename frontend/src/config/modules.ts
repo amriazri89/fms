@@ -59,6 +59,9 @@ export const modules: AppModule[] = [
   { key: 'customers', path: '/pelanggan', label: 'Pelanggan', icon: 'users', roles: ALL, group: 'jualan', component: lazy(() => import('../pages/sales/CustomersPage')) },
   { key: 'customer', path: '/pelanggan/:id', label: 'Pelanggan', icon: 'users', roles: ALL, group: 'jualan', hidden: true, component: lazy(() => import('../pages/sales/CustomerDetailPage')) },
 
+  { key: 'credit-book', path: '/buku-hutang', label: 'Buku hutang (555)', icon: 'book', roles: ALL, group: 'jualan', component: lazy(() => import('../pages/creditbook/CreditBookPage')) },
+  { key: 'credit-ledger', path: '/buku-hutang/:customerId/:businessUnitId', label: 'Buku hutang', icon: 'book', roles: ALL, group: 'jualan', hidden: true, component: lazy(() => import('../pages/creditbook/CreditLedgerPage')) },
+
   { key: 'quotations', path: '/sebut-harga', label: 'Sebut harga', icon: 'quote', roles: ALL, group: 'jualan', component: named(salesLists, 'QuotationsPage') },
   { key: 'quotation-new', path: '/sebut-harga/baru', label: 'Sebut harga baru', icon: 'quote', roles: ALL, group: 'jualan', hidden: true, component: named(salesForms, 'QuotationFormPage') },
   { key: 'quotation-edit', path: '/sebut-harga/:id/ubah', label: 'Ubah sebut harga', icon: 'quote', roles: ALL, group: 'jualan', hidden: true, component: named(salesForms, 'QuotationFormPage') },

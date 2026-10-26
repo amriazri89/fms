@@ -283,6 +283,7 @@ CREATE TABLE IF NOT EXISTS `Payments` (
     `TransactionId` INT NULL,
     `Reference` VARCHAR(50) NULL,
     `Description` VARCHAR(300) NULL,
+    `IsCreditPayment` TINYINT(1) NOT NULL DEFAULT 0,  -- bayaran buku hutang kedai (555)
     `IsVoided` TINYINT(1) NOT NULL,
     `VoidReason` VARCHAR(300) NULL,
     `VoidedAt` DATETIME(6) NULL,
@@ -529,4 +530,31 @@ CREATE TABLE IF NOT EXISTS `Claims` (
     CONSTRAINT `FK_Claims_Categories_CategoryId` FOREIGN KEY (`CategoryId`) REFERENCES `Categories` (`Id`) ON DELETE RESTRICT,
     CONSTRAINT `FK_Claims_Accounts_PaidAccountId` FOREIGN KEY (`PaidAccountId`) REFERENCES `Accounts` (`Id`) ON DELETE RESTRICT,
     CONSTRAINT `FK_Claims_Transactions_TransactionId` FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`Id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Buku hutang kedai (555): pelanggan ambil barang dahulu, bayar kemudian.
+-- Rekod ini belum dikira jualan. Bayaran = Payments.IsCreditPayment = 1
+-- (resit biasa yang menjana Duit Masuk). Baki = hutang aktif - bayaran aktif.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `CreditSales` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `CustomerId` INT NOT NULL,
+    `BusinessUnitId` INT NOT NULL,
+    `Date` DATE NOT NULL,
+    `Description` VARCHAR(300) NOT NULL,  -- barang yang diambil
+    `Amount` DECIMAL(18,2) NOT NULL,
+    `IsVoided` TINYINT(1) NOT NULL,
+    `VoidReason` VARCHAR(300) NULL,
+    `VoidedAt` DATETIME(6) NULL,
+    `CreatedById` INT NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`Id`),
+    KEY `IX_CreditSales_CustomerId_BusinessUnitId` (`CustomerId`, `BusinessUnitId`),
+    KEY `IX_CreditSales_BusinessUnitId` (`BusinessUnitId`),
+    KEY `IX_CreditSales_Date` (`Date`),
+    KEY `IX_CreditSales_CreatedById` (`CreatedById`),
+    CONSTRAINT `FK_CreditSales_Customers_CustomerId`         FOREIGN KEY (`CustomerId`)     REFERENCES `Customers` (`Id`)     ON DELETE RESTRICT,
+    CONSTRAINT `FK_CreditSales_BusinessUnits_BusinessUnitId` FOREIGN KEY (`BusinessUnitId`) REFERENCES `BusinessUnits` (`Id`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_CreditSales_Users_CreatedById`            FOREIGN KEY (`CreatedById`)    REFERENCES `Users` (`Id`)         ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
