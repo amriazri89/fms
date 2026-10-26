@@ -1,0 +1,48 @@
+import type { Invoice, Quotation, Receipt } from '../api/types'
+import { formatDate, formatQty, formatRM } from './format'
+
+// Mesej WhatsApp ringkas. Dokumen penuh boleh dihantar sebagai PDF (Cetak → Simpan sebagai PDF).
+
+const greet = (name: string) => `Assalamualaikum / Salam sejahtera ${name},`
+
+const itemLines = (items: { description: string; quantity: number; unit: string | null; amount: number }[]) =>
+  items.map((l) => `• ${l.description} — ${formatQty(l.quantity)}${l.unit ? ` ${l.unit}` : ''} = ${formatRM(l.amount)}`).join('\n')
+
+export const quotationMessage = (q: Quotation) =>
+  [
+    greet(q.buyer.contactPerson || q.buyer.name),
+    '',
+    `Berikut sebut harga *${q.number}* daripada ${q.seller.name}${q.subject ? ` untuk ${q.subject}` : ''}:`,
+    '',
+    itemLines(q.items),
+    '',
+    `*Jumlah: ${formatRM(q.total)}*`,
+    `Sah sehingga: ${formatDate(q.validUntil)}`,
+    '',
+    'Sila maklumkan jika bersetuju. Terima kasih.',
+  ].join('\n')
+
+export const invoiceMessage = (i: Invoice) =>
+  [
+    greet(i.buyer.contactPerson || i.buyer.name),
+    '',
+    `Invois *${i.number}* daripada ${i.seller.name} berjumlah *${formatRM(i.total)}*.`,
+    i.amountPaid > 0 ? `Telah dibayar: ${formatRM(i.amountPaid)}. Baki: *${formatRM(i.balance)}*.` : '',
+    `Tarikh akhir bayaran: ${formatDate(i.dueDate)}.`,
+    i.seller.paymentInfo ? `\nBayaran boleh dibuat ke:\n${i.seller.paymentInfo}` : '',
+    '',
+    'Terima kasih.',
+  ]
+    .filter((l, idx, arr) => !(l === '' && arr[idx - 1] === ''))
+    .join('\n')
+
+export const receiptMessage = (r: Receipt) =>
+  [
+    greet(r.receivedFrom),
+    '',
+    `Terima kasih. Bayaran *${formatRM(r.amount)}* telah diterima pada ${formatDate(r.date)}.`,
+    `No. resit: *${r.number}*${r.invoiceNumber ? ` (invois ${r.invoiceNumber})` : ''}.`,
+    r.balanceAfter != null && r.balanceAfter > 0 ? `Baki invois: ${formatRM(r.balanceAfter)}.` : '',
+    '',
+    `— ${r.seller.name}`,
+  ].join('\n')

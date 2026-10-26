@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+*.db-shm
+*.db-wal
+appsettings.Production.json
+
+# Frontend
+node_modules/
+frontend/.env
+frontend/.env.local
+
+# Build output frontend (dijana oleh npm run build)
+backend/Fms.Api/wwwroot/*
+!backend/Fms.Api/wwwroot/.gitkeep
+
+# DB kerja (yang dalam database/ disimpan)
+backend/Fms.Api/*.db*

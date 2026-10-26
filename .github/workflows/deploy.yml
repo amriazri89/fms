@@ -1,0 +1,120 @@
+# FMS — build React + ASP.NET Core API and deploy to the Ubuntu VPS over SSH.
+#
+# The frontend builds straight into backend/Fms.Api/wwwroot (see frontend/vite.config.ts),
+# so one `dotnet publish` produces the whole app. The API serves the React app itself.
+#
+# Flow: npm build -> dotnet publish -> upload as a new release folder
+#       -> activate.sh on the server (switch symlink, restart, health check, auto-rollback)
+#
+# Secrets (repo Settings > Environments > production):
+#   SSH_HOST, SSH_PORT, SSH_USER (deploy), SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS
+
+name: Build and deploy FMS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: '8.0.x'   # project targets net8.0 (Pomelo 8). See README about upgrading to .NET 10.
+  NODE_VERSION: '22'
+  API_PROJECT: backend/Fms.Api/Fms.Api.csproj
+  APP_ROOT: /var/www/fms
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # ---------------- Frontend (outputs into backend/Fms.Api/wwwroot) ----------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend (type-check + vite build)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Check frontend output
+        run: test -f backend/Fms.Api/wwwroot/index.html
+
+      # ---------------- Backend ----------------
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore "$API_PROJECT"
+
+      - name: Publish
+        run: dotnet publish "$API_PROJECT" -c Release -o out/api --no-restore -p:UseAppHost=false
+
+      - name: Assemble release
+        run: |
+          # Development settings hold the dev JWT key and demo passwords; never ship them.
+          rm -f out/api/appsettings.Development.json
+          test -f out/api/Fms.Api.dll
+          test -f out/api/wwwroot/index.html
+          mkdir -p out/deploy
+          cp deploy/activate.sh deploy/rollback.sh out/deploy/
+          echo "$GITHUB_SHA" > out/REVISION
+
+      # ---------------- Deploy ----------------
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          {
+            echo "Host prod"
+            echo "  HostName $SSH_HOST"
+            echo "  Port ${SSH_PORT:-22}"
+            echo "  User $SSH_USER"
+            echo "  IdentityFile ~/.ssh/deploy_key"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+          } > ~/.ssh/config
+
+      - name: Upload release
+        run: |
+          RELEASE="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          echo "RELEASE=$RELEASE" >> "$GITHUB_ENV"
+          ssh prod "mkdir -p '$APP_ROOT/releases/$RELEASE'"
+          tar -C out -czf - . | ssh prod "tar -xzf - -C '$APP_ROOT/releases/$RELEASE'"
+
+      - name: Activate release
+        run: ssh prod "bash '$APP_ROOT/releases/$RELEASE/deploy/activate.sh' '$RELEASE'"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

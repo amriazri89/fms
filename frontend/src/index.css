@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-[#F5F7F6] font-sans text-ink antialiased;
+}
+
+/* Elak zoom automatik iOS pada input */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 15px;
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .doc-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}

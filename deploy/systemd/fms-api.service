@@ -1,0 +1,41 @@
+# /etc/systemd/system/fms-api.service
+
+[Unit]
+Description=FMS (Finance Management System) ASP.NET Core app
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=exec
+User=fms
+Group=fms
+WorkingDirectory=/var/www/fms/current/api
+ExecStart=/usr/bin/dotnet /var/www/fms/current/api/Fms.Api.dll
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+SyslogIdentifier=fms-api
+
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+# Claim receipts must live OUTSIDE the release folder, or each deploy would lose them
+Environment=App__UploadFolder=/var/lib/fms/uploads
+Environment=DOTNET_NOLOGO=1
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+# Secrets: DB connection string, JWT key, first-login passwords
+EnvironmentFile=/etc/fms/api.env
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/fms
+
+# 2 GB server: leave room for MySQL
+MemoryHigh=600M
+MemoryMax=900M
+
+[Install]
+WantedBy=multi-user.target
