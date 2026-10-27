@@ -50,7 +50,10 @@ export interface Account {
   id: number
   name: string
   type: AccountType
+  /** = openingCash + openingBank (dikira oleh server) */
   openingBalance: number
+  openingCash: number
+  openingBank: number
   businessUnitId: number | null
   sortOrder: number
   isActive: boolean
@@ -85,8 +88,10 @@ export interface TransactionInput {
   party: string | null
   reference: string | null
   description: string | null
-  /** Tunai / Bank — wajib untuk Duit Masuk & Duit Keluar */
+  /** Tunai / Bank — wajib untuk Duit Masuk & Duit Keluar. Pindahan: bahagian asal */
   channel: MoneyChannel | null
+  /** Pindahan sahaja: Tunai / Bank di destinasi (akaun sama dibenarkan, contoh Tunai → Bank) */
+  toChannel: MoneyChannel | null
 }
 
 export interface Transaction extends TransactionInput {
@@ -143,8 +148,14 @@ export interface AccountBalance {
   id: number
   name: string
   type: AccountType
+  /** = cash + bank + unlabelled */
   balance: number
   isLow: boolean
+  cash: number
+  bank: number
+  /** Rekod lama tanpa label Tunai/Bank */
+  unlabelled: number
+  businessUnitId: number | null
 }
 
 export interface NamedAmount {
@@ -176,6 +187,9 @@ export interface Dashboard {
     withdrawals: number
     capital: number
     totalMoney: number
+    totalCash: number
+    totalBank: number
+    totalUnlabelled: number
   }
   businesses: BusinessProfit[]
   accounts: AccountBalance[]
@@ -695,6 +709,7 @@ export interface PayableInput {
   installmentAmount: number | null
   notes: string | null
   receivedAccountId: number | null
+  receivedChannel: MoneyChannel | null
 }
 
 export interface PayableListItem {
@@ -728,6 +743,7 @@ export interface Payable extends PayableListItem {
   receivedTransactionId: number | null
   receivedAccountId: number | null
   receivedAccountName: string | null
+  receivedChannel: MoneyChannel | null
   payments: PayablePayment[]
   createdBy: string
   createdAt: string

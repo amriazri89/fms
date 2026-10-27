@@ -107,13 +107,13 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
     {
         var rows = await Filter(q).OrderBy(t => t.Date).ThenBy(t => t.Id).Select(TransactionMapping.ToDto).ToListAsync();
         var sb = new StringBuilder();
-        sb.AppendLine("Tarikh,Jenis,Perniagaan,Ke Perniagaan,Akaun,Ke Akaun,Tunai/Bank,Kategori,Ahli Keluarga,Pelanggan/Pembekal,Rujukan,Catatan,Jumlah,Direkod Oleh");
+        sb.AppendLine("Tarikh,Jenis,Perniagaan,Ke Perniagaan,Akaun,Ke Akaun,Tunai/Bank,Ke Tunai/Bank,Kategori,Ahli Keluarga,Pelanggan/Pembekal,Rujukan,Catatan,Jumlah,Direkod Oleh");
         foreach (var r in rows)
         {
             sb.AppendJoin(',', new[]
             {
                 r.Date.ToString("yyyy-MM-dd"), r.Type.ToString(), Csv(r.BusinessUnitName), Csv(r.ToBusinessUnitName),
-                Csv(r.AccountName), Csv(r.ToAccountName), ChannelLabel(r.Channel), Csv(r.CategoryName), Csv(r.FamilyMemberName),
+                Csv(r.AccountName), Csv(r.ToAccountName), ChannelLabel(r.Channel), ChannelLabel(r.ToChannel), Csv(r.CategoryName), Csv(r.FamilyMemberName),
                 Csv(r.Party), Csv(r.Reference), Csv(r.Description),
                 r.Amount.ToString("0.00", CultureInfo.InvariantCulture), Csv(r.CreatedBy)
             });
@@ -171,7 +171,7 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         if (q.BusinessUnitId is int bu) query = query.Where(t => t.BusinessUnitId == bu || t.ToBusinessUnitId == bu);
         if (q.AccountId is int acc) query = query.Where(t => t.AccountId == acc || t.ToAccountId == acc);
         if (q.CategoryId is int cat) query = query.Where(t => t.CategoryId == cat);
-        if (q.Channel is MoneyChannel ch) query = query.Where(t => t.Channel == ch);
+        if (q.Channel is MoneyChannel ch) query = query.Where(t => t.Channel == ch || t.ToChannel == ch);
         if (!string.IsNullOrWhiteSpace(q.Q))
         {
             var s = q.Q.Trim();
@@ -201,6 +201,7 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         t.CategoryId = rule.Category != FieldRule.Hidden ? i.CategoryId : null;
         t.FamilyMemberId = rule.FamilyMember != FieldRule.Hidden ? i.FamilyMemberId : null;
         t.Channel = rule.Channel != FieldRule.Hidden ? i.Channel : null;
+        t.ToChannel = rule.ToChannel != FieldRule.Hidden ? i.ToChannel : null;
     }
 
     private async Task<Dictionary<string, string[]>> ValidateAsync(TransactionInput i)
@@ -230,6 +231,9 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         else if (i.Channel is MoneyChannel ch && !Enum.IsDefined(ch))
             Add(nameof(i.Channel), "Pilih Tunai atau Bank.");
 
+        if (rule.ToChannel == FieldRule.Required && (i.ToChannel is null || !Enum.IsDefined(i.ToChannel.Value)))
+            Add(nameof(i.ToChannel), "Pilih Tunai atau Bank (destinasi).");
+
         if (rule.Business == FieldRule.Required && i.BusinessUnitId is null)
             Add(nameof(i.BusinessUnitId), "Sila pilih perniagaan.");
         if (i.BusinessUnitId is int bu && rule.Business != FieldRule.Hidden && !await db.BusinessUnits.AnyAsync(b => b.Id == bu && b.IsActive))
@@ -247,8 +251,9 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         {
             if (i.ToAccountId is not int ta || !await db.Accounts.AnyAsync(a => a.Id == ta && a.IsActive))
                 Add(nameof(i.ToAccountId), "Sila pilih akaun destinasi.");
-            else if (i.Type == TransactionType.Transfer && ta == i.AccountId)
-                Add(nameof(i.ToAccountId), "Akaun asal dan destinasi mesti berbeza.");
+            // Akaun sama dibenarkan jika Tunai/Bank berbeza (contoh: masukkan tunai ke bank)
+            else if (i.Type == TransactionType.Transfer && ta == i.AccountId && i.ToChannel == i.Channel)
+                Add(nameof(i.ToAccountId), "Pilih akaun lain, atau Tunai/Bank yang berbeza.");
         }
 
         if (rule.Category == FieldRule.Required)

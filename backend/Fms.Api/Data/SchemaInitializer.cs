@@ -39,6 +39,13 @@ public static class SchemaInitializer
         // Label Tunai / Bank. Rekod lama: ikut jenis akaun yang digunakan.
         ("Transactions", "Channel", "VARCHAR(10) NULL",
             "UPDATE `Transactions` t JOIN `Accounts` a ON a.`Id` = t.`AccountId` SET t.`Channel` = a.`Type` WHERE t.`Channel` IS NULL;"),
+        // Pindah duit: Tunai / Bank di destinasi. Rekod lama: ikut jenis akaun destinasi.
+        ("Transactions", "ToChannel", "VARCHAR(10) NULL",
+            "UPDATE `Transactions` t JOIN `Accounts` a ON a.`Id` = t.`ToAccountId` SET t.`ToChannel` = a.`Type` WHERE t.`ToChannel` IS NULL;"),
+        // Baki awal dipecah Tunai / Bank. Akaun lama: semua baki awal ikut jenis akaun.
+        ("Accounts", "OpeningCash", "DECIMAL(18,2) NOT NULL DEFAULT 0", null),
+        ("Accounts", "OpeningBank", "DECIMAL(18,2) NOT NULL DEFAULT 0",
+            "UPDATE `Accounts` SET `OpeningCash` = IF(`Type` = 'Cash', `OpeningBalance`, 0), `OpeningBank` = IF(`Type` = 'Bank', `OpeningBalance`, 0);"),
     ];
 
     public static void Apply(AppDbContext db, ILogger logger)

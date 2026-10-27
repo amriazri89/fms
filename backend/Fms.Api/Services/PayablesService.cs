@@ -95,6 +95,7 @@ public class PayablesService(
             x.InstallmentAmount, x.Payments.Where(p => !p.IsVoided).Sum(p => p.InterestAmount),
             x.Status, IsOverdue(x, today), DaysToDue(x, today),
             x.Notes, x.CancelReason, x.ReceivedTransactionId, x.ReceivedTransaction?.AccountId, x.ReceivedTransaction?.Account?.Name,
+            x.ReceivedTransaction?.Channel,
             payments, x.CreatedBy?.FullName ?? "", x.CreatedAt, x.UpdatedAt);
     }
 
@@ -131,7 +132,7 @@ public class PayablesService(
             Apply(p, input);
             p.Number = await DocumentNumbers.NextAsync(db, _doc, DocumentType.Payable, p.Date);
             if (input.Kind == PayableKind.Loan && input.ReceivedAccountId is int acc)
-                p.ReceivedTransaction = NewLoanInTransaction(p, acc, supplier.Name);
+                p.ReceivedTransaction = NewLoanInTransaction(p, acc, input.ReceivedChannel, supplier.Name);
 
             db.Payables.Add(p);
             await db.SaveChangesAsync();
@@ -168,13 +169,14 @@ public class PayablesService(
             {
                 if (existing is null)
                 {
-                    p.ReceivedTransaction = NewLoanInTransaction(p, acc, supplier.Name);
+                    p.ReceivedTransaction = NewLoanInTransaction(p, acc, input.ReceivedChannel, supplier.Name);
                 }
                 else
                 {
                     existing.Date = p.Date;
                     existing.Amount = p.Amount;
                     existing.AccountId = acc;
+                    existing.Channel = input.ReceivedChannel;
                     existing.BusinessUnitId = p.BusinessUnitId;
                     existing.Party = supplier.Name;
                     existing.Description = Truncate($"Pinjaman: {p.Description}", 500);
@@ -478,6 +480,8 @@ public class PayablesService(
         }
         if (i.Kind == PayableKind.Loan && i.ReceivedAccountId is int acc && !await db.Accounts.AnyAsync(a => a.Id == acc && a.IsActive))
             AddError(errors, "receivedAccountId", "Akaun tidak sah.");
+        if (i.Kind == PayableKind.Loan && i.ReceivedAccountId is not null && (i.ReceivedChannel is null || !Enum.IsDefined(i.ReceivedChannel.Value)))
+            AddError(errors, "receivedChannel", "Pilih Tunai atau Bank.");
 
         ThrowIfAny(errors);
         return supplier!;
@@ -497,8 +501,9 @@ public class PayablesService(
         p.Notes = Clean(i.Notes);
     }
 
-    private Transaction NewLoanInTransaction(Payable p, int accountId, string supplierName) => new()
+    private Transaction NewLoanInTransaction(Payable p, int accountId, MoneyChannel? channel, string supplierName) => new()
     {
+        Channel = channel,
         Date = p.Date,
         Type = TransactionType.LoanIn,
         Amount = p.Amount,

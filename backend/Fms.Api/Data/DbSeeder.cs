@@ -118,10 +118,15 @@ public static class DbSeeder
         Account Acc(string n) => accounts.Single(a => a.Name == n);
         BusinessUnit Bu(string n) => units.Single(u => u.Name == n);
 
-        Acc("Maybank").OpeningBalance = 12000m;
-        Acc("CIMB").OpeningBalance = 5000m;
-        Acc("Tunai Kebun").OpeningBalance = 1500m;
-        Acc("Tunai Kedai").OpeningBalance = 800m;
+        void Opening(Account a, decimal amount)
+        {
+            a.OpeningBalance = amount;
+            if (a.Type == AccountType.Cash) a.OpeningCash = amount; else a.OpeningBank = amount;
+        }
+        Opening(Acc("Maybank"), 12000m);
+        Opening(Acc("CIMB"), 5000m);
+        Opening(Acc("Tunai Kebun"), 1500m);
+        Opening(Acc("Tunai Kedai"), 800m);
 
         var rnd = new Random(42);
         var today = Clock.Today(options.TimeZone);
@@ -141,6 +146,7 @@ public static class DbSeeder
             {
                 Date = d, Type = t, Amount = Math.Round(amt, 2), BusinessUnitId = u?.Id, AccountId = a.Id,
                 Channel = TransactionRules.For(t).Channel == FieldRule.Hidden ? null : DemoChannel(a),
+                ToChannel = toA is null ? null : DemoChannel(toA),
                 CategoryId = c?.Id, Party = party, Description = desc, ToAccountId = toA?.Id,
                 ToBusinessUnitId = toU?.Id, FamilyMemberId = m?.Id, CreatedById = admin.Id
             });

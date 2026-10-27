@@ -38,7 +38,12 @@ public class Account
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public AccountType Type { get; set; }
+    /// <summary>Jumlah baki awal = OpeningCash + OpeningBank (ditetapkan oleh API).</summary>
     public decimal OpeningBalance { get; set; }
+    /// <summary>Baki awal dalam tunai.</summary>
+    public decimal OpeningCash { get; set; }
+    /// <summary>Baki awal dalam bank.</summary>
+    public decimal OpeningBank { get; set; }
 
     /// <summary>Jika diisi, akaun ini milik perniagaan tertentu. Kosong = akaun dikongsi.</summary>
     public int? BusinessUnitId { get; set; }
@@ -97,8 +102,11 @@ public class Transaction
     public int? CategoryId { get; set; }
     public Category? Category { get; set; }
 
-    /// <summary>Tunai atau Bank. Wajib untuk Duit Masuk / Duit Keluar.</summary>
+    /// <summary>Tunai atau Bank. Untuk Transfer/InternalLoan: bahagian asal.</summary>
     public MoneyChannel? Channel { get; set; }
+
+    /// <summary>Hanya untuk Transfer/InternalLoan: Tunai atau Bank di destinasi (boleh akaun sama, contoh Tunai → Bank).</summary>
+    public MoneyChannel? ToChannel { get; set; }
 
     public int? FamilyMemberId { get; set; }
     public FamilyMember? FamilyMember { get; set; }

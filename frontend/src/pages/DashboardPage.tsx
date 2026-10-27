@@ -119,18 +119,24 @@ export default function DashboardPage() {
             <Card title="Baki akaun">
               <ul className="divide-y divide-line/60">
                 {data.accounts.map((a) => (
-                  <li key={a.id} className="flex items-center justify-between py-2.5 text-sm">
-                    <span className="flex items-center gap-2 text-ink">
-                      <Icon name="wallet" className="h-4 w-4 text-muted" />
-                      {a.name}
-                      {a.isLow && <Icon name="alert" className="h-4 w-4 text-gold-600" />}
-                    </span>
-                    <Money value={a.balance} className="font-semibold" />
+                  <li key={a.id} className="py-2.5 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-ink">
+                        <Icon name="wallet" className="h-4 w-4 text-muted" />
+                        {a.name}
+                        {a.isLow && <Icon name="alert" className="h-4 w-4 text-gold-600" />}
+                      </span>
+                      <Money value={a.balance} className="font-semibold" />
+                    </div>
+                    <ChannelSplit cash={a.cash} bank={a.bank} unlabelled={a.unlabelled} />
                   </li>
                 ))}
-                <li className="flex items-center justify-between pt-3 text-sm font-bold">
-                  <span>Jumlah</span>
-                  <Money value={data.totals.totalMoney} />
+                <li className="pt-3 text-sm font-bold">
+                  <div className="flex items-center justify-between">
+                    <span>Jumlah</span>
+                    <Money value={data.totals.totalMoney} />
+                  </div>
+                  <ChannelSplit cash={data.totals.totalCash} bank={data.totals.totalBank} unlabelled={data.totals.totalUnlabelled} />
                 </li>
               </ul>
             </Card>
@@ -306,6 +312,17 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+/** Pecahan Tunai / Bank di bawah baki akaun. Baki tanpa label (rekod lama) dipapar jika ada. */
+function ChannelSplit({ cash, bank, unlabelled }: { cash: number; bank: number; unlabelled: number }) {
+  return (
+    <div className="mt-0.5 flex flex-wrap justify-end gap-x-3 pl-6 text-xs font-normal text-muted">
+      <span>Tunai <Money value={cash} className="font-semibold text-ink" /></span>
+      <span>Bank <Money value={bank} className="font-semibold text-ink" /></span>
+      {Math.abs(unlabelled) >= 0.005 && <span title="Rekod lama tanpa label Tunai/Bank">Belum dilabel <Money value={unlabelled} className="font-semibold text-ink" /></span>}
     </div>
   )
 }

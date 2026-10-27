@@ -4,7 +4,7 @@ import type { Account, BusinessUnit, Category, FamilyMember, User, UserRole } fr
 import { roleLabels, useAuth } from '../auth/AuthContext'
 import { MasterTable } from '../components/MasterTable'
 import { Badge, Button, Card, ErrorBox, Field, Input, Modal, Money, PageHeader, Segmented, Select, Spinner } from '../components/ui'
-import { formatDateTime } from '../lib/format'
+import { formatDateTime, formatRM } from '../lib/format'
 
 type Tab = 'business' | 'accounts' | 'categories' | 'members' | 'users' | 'audit'
 const tabs: { key: Tab; label: string }[] = [
@@ -66,11 +66,12 @@ function AccountsTab() {
       cacheKey="accounts"
       rows={data}
       loading={isLoading}
-      emptyRow={{ name: '', type: 'Bank', openingBalance: 0, businessUnitId: null, sortOrder: (data?.length ?? 0) + 1, isActive: true }}
+      emptyRow={{ name: '', type: 'Bank', openingBalance: 0, openingCash: 0, openingBank: 0, businessUnitId: null, sortOrder: (data?.length ?? 0) + 1, isActive: true }}
       fields={[
         { key: 'name', label: 'Nama akaun', kind: 'text', required: true },
         { key: 'type', label: 'Jenis', kind: 'select', required: true, options: [{ value: 'Cash', label: 'Tunai' }, { value: 'Bank', label: 'Bank' }] },
-        { key: 'openingBalance', label: 'Baki awal (RM)', kind: 'number' },
+        { key: 'openingCash', label: 'Baki awal tunai (RM)', kind: 'number' },
+        { key: 'openingBank', label: 'Baki awal bank (RM)', kind: 'number' },
         { key: 'businessUnitId', label: 'Milik perniagaan', kind: 'select', allowEmpty: 'Dikongsi semua', options: units.map((u) => ({ value: u.id, label: u.name })) },
         { key: 'sortOrder', label: 'Susunan', kind: 'number' },
         { key: 'isActive', label: 'Aktif', kind: 'checkbox' },
@@ -78,7 +79,16 @@ function AccountsTab() {
       columns={[
         { label: 'Nama', render: (r) => <span className="font-semibold">{r.name}</span> },
         { label: 'Milik perniagaan', render: (r) => (r.businessUnitId ? units.find((u) => u.id === r.businessUnitId)?.name ?? '?' : `Dikongsi · ${accountTypeLabel[r.type]}`) },
-        { label: 'Baki awal', render: (r) => <Money value={r.openingBalance} />, className: 'text-right' },
+        {
+          label: 'Baki awal',
+          render: (r) => (
+            <span className="block">
+              <Money value={r.openingBalance} />
+              <span className="block text-xs text-muted">Tunai {formatRM(r.openingCash)} · Bank {formatRM(r.openingBank)}</span>
+            </span>
+          ),
+          className: 'text-right',
+        },
       ]}
     />
   )

@@ -2,10 +2,11 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { useAccounts, useBusinessUnits, useCategories, useFamilyMembers, useTransactionMutations } from '../api/hooks'
 import type { Transaction, TransactionInput, TransactionType } from '../api/types'
-import { accountForBusiness, channels } from '../config/channels'
+import { accountForBusiness } from '../config/channels'
 import { typeConfig } from '../config/transactionTypes'
 import { today } from '../lib/format'
-import { Button, ErrorBox, Field, Input, Select, cx } from './ui'
+import { ChannelPicker } from './ChannelPicker'
+import { Button, ErrorBox, Field, Input, Select } from './ui'
 
 const emptyInput = (type: TransactionType): TransactionInput => ({
   date: today(),
@@ -21,6 +22,7 @@ const emptyInput = (type: TransactionType): TransactionInput => ({
   reference: null,
   description: null,
   channel: null,
+  toChannel: null,
 })
 
 const fromTransaction = (t: Transaction): TransactionInput => ({
@@ -37,6 +39,7 @@ const fromTransaction = (t: Transaction): TransactionInput => ({
   reference: t.reference,
   description: t.description,
   channel: t.channel,
+  toChannel: t.toChannel,
 })
 
 const num = (v: string) => (v === '' ? null : Number(v))
@@ -93,6 +96,7 @@ export function TransactionForm({
     if (!form.date) e.date = 'Pilih tarikh.'
     if (!effectiveAccountId) e.accountId = 'Pilih akaun.'
     if (cfg.fields.channel === 'required' && !form.channel) e.channel = 'Pilih Tunai atau Bank.'
+    if (cfg.fields.toChannel === 'required' && !form.toChannel) e.toChannel = 'Pilih Tunai atau Bank.'
     if (cfg.fields.business === 'required' && !form.businessUnitId) e.businessUnitId = 'Pilih perniagaan.'
     if (cfg.fields.toBusiness === 'required') {
       if (!form.toBusinessUnitId) e.toBusinessUnitId = 'Pilih perniagaan.'
@@ -100,7 +104,9 @@ export function TransactionForm({
     }
     if (cfg.fields.toAccount === 'required') {
       if (!form.toAccountId) e.toAccountId = 'Pilih akaun.'
-      else if (cfg.type === 'Transfer' && form.toAccountId === effectiveAccountId) e.toAccountId = 'Mesti berbeza dengan akaun asal.'
+      // Akaun sama dibenarkan jika Tunai/Bank berbeza (contoh: masukkan tunai ke bank)
+      else if (cfg.type === 'Transfer' && form.toAccountId === effectiveAccountId && form.toChannel === form.channel)
+        e.toAccountId = 'Pilih akaun lain, atau Tunai/Bank yang berbeza.'
     }
     if (cfg.fields.category === 'required' && !form.categoryId) e.categoryId = 'Pilih kategori.'
     if (cfg.fields.familyMember === 'required' && !form.familyMemberId) e.familyMemberId = 'Pilih ahli keluarga.'
@@ -120,6 +126,7 @@ export function TransactionForm({
         amount,
         accountId: effectiveAccountId,
         channel: cfg.fields.channel === 'hidden' ? null : form.channel,
+        toChannel: cfg.fields.toChannel === 'hidden' ? null : form.toChannel,
       }
       const saved = await save.mutateAsync({ id: existing?.id, input })
       onSaved(saved, again)
@@ -169,23 +176,10 @@ export function TransactionForm({
         </Field>
       )}
 
-      {cfg.fields.channel !== 'hidden' && (
+      {/* Pindahan: Tunai/Bank dipapar bersama akaun asal & destinasi di bawah */}
+      {cfg.fields.channel !== 'hidden' && cfg.fields.toChannel === 'hidden' && (
         <Field label="Tunai / Bank" required={cfg.fields.channel === 'required'} error={errors.channel}>
-          <div className="grid grid-cols-2 gap-2">
-            {channels.map((c) => (
-              <button
-                type="button"
-                key={c.value}
-                onClick={() => set('channel', form.channel === c.value && cfg.fields.channel === 'optional' ? null : c.value)}
-                className={cx(
-                  'min-h-[44px] rounded-xl border px-3 py-2 text-sm font-semibold transition',
-                  form.channel === c.value ? 'border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-100' : 'border-line bg-white text-ink hover:bg-gray-50',
-                )}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          <ChannelPicker value={form.channel} onChange={(v) => set('channel', v)} allowClear={cfg.fields.channel === 'optional'} />
         </Field>
       )}
 
@@ -224,24 +218,45 @@ export function TransactionForm({
 
       <div className={cfg.fields.toAccount !== 'hidden' ? 'grid gap-4 sm:grid-cols-2' : ''}>
         {!autoAccount && (
-          <Field label={cfg.labels.account} required error={errors.accountId}>
-            <Select value={form.accountId || ''} onChange={(e) => set('accountId', Number(e.target.value))}>
-              <option value="">— Pilih akaun —</option>
-              {sortedAccounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </Select>
-          </Field>
+          <div className="space-y-2">
+            <Field label={cfg.labels.account} required error={errors.accountId}>
+              <Select
+                value={form.accountId || ''}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  // Pindah Tunai ↔ Bank biasanya dalam akaun yang sama: isi akaun destinasi sekali
+                  setForm((f) => ({ ...f, accountId: v, toAccountId: cfg.type === 'Transfer' && !f.toAccountId ? v : f.toAccountId }))
+                }}
+              >
+                <option value="">— Pilih akaun —</option>
+                {sortedAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </Select>
+            </Field>
+            {cfg.fields.toChannel !== 'hidden' && (
+              <Field label="Dari Tunai / Bank" required error={errors.channel}>
+                <ChannelPicker value={form.channel} onChange={(v) => set('channel', v)} />
+              </Field>
+            )}
+          </div>
         )}
         {cfg.fields.toAccount !== 'hidden' && (
-          <Field label={cfg.labels.toAccount ?? 'Ke akaun'} required error={errors.toAccountId}>
-            <Select value={form.toAccountId ?? ''} onChange={(e) => set('toAccountId', num(e.target.value))}>
-              <option value="">— Pilih akaun —</option>
-              {sortedAccounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </Select>
-          </Field>
+          <div className="space-y-2">
+            <Field label={cfg.labels.toAccount ?? 'Ke akaun'} required error={errors.toAccountId}>
+              <Select value={form.toAccountId ?? ''} onChange={(e) => set('toAccountId', num(e.target.value))}>
+                <option value="">— Pilih akaun —</option>
+                {sortedAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </Select>
+            </Field>
+            {cfg.fields.toChannel !== 'hidden' && (
+              <Field label="Ke Tunai / Bank" required error={errors.toChannel}>
+                <ChannelPicker value={form.toChannel} onChange={(v) => set('toChannel', v)} />
+              </Field>
+            )}
+          </div>
         )}
       </div>
 

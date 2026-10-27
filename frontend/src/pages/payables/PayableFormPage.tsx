@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { useAccounts, useBusinessUnits, useCategories } from '../../api/hooks'
 import { usePayable, usePayableMutations, useSuppliers } from '../../api/payableHooks'
-import type { PayableKind } from '../../api/types'
+import type { MoneyChannel, PayableKind } from '../../api/types'
+import { ChannelPicker } from '../../components/ChannelPicker'
 import { Icon } from '../../components/Icon'
 import { SupplierFormModal } from '../../components/payables/SupplierFormModal'
 import { Button, Card, ErrorBox, Field, Input, Select, Spinner, Textarea, cx } from '../../components/ui'
@@ -36,6 +37,7 @@ export default function PayableFormPage() {
   const [installment, setInstallment] = useState('')
   const [notes, setNotes] = useState('')
   const [moneyIn, setMoneyIn] = useState(true)
+  const [receivedChannel, setReceivedChannel] = useState<MoneyChannel | null>('Bank')
   const [receivedAccountChosen, setReceivedAccountId] = useState<number | ''>('')
   // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
   const receivedAccountId = receivedAccountChosen || accountForBusiness(accounts, businessUnitId || null)?.id || ''
@@ -59,6 +61,7 @@ export default function PayableFormPage() {
     setNotes(p.notes ?? '')
     setMoneyIn(!!p.receivedAccountId)
     setReceivedAccountId(p.receivedAccountId ?? '')
+    setReceivedChannel(p.receivedChannel ?? 'Bank')
   }, [p])
 
   const expenseCategories = useMemo(
@@ -84,6 +87,7 @@ export default function PayableFormPage() {
     if (amt <= 0) err.amount = 'Masukkan jumlah.'
     if (dueDate < date) err.dueDate = 'Mesti sama atau selepas tarikh hutang.'
     if (isLoan && moneyIn && !receivedAccountId) err.receivedAccountId = 'Pilih akaun yang menerima duit.'
+    if (isLoan && moneyIn && !receivedChannel) err.receivedChannel = 'Pilih Tunai atau Bank.'
     setErrors(err)
     if (Object.keys(err).length) return
 
@@ -103,6 +107,7 @@ export default function PayableFormPage() {
           installmentAmount: isLoan && installment ? parseNum(installment) : null,
           notes: notes.trim() || null,
           receivedAccountId: isLoan && moneyIn ? Number(receivedAccountId) : null,
+          receivedChannel: isLoan && moneyIn ? receivedChannel : null,
         },
       })
       navigate(`/hutang/${saved.id}`, { replace: true })
@@ -202,12 +207,17 @@ export default function PayableFormPage() {
                   </span>
                 </label>
                 {moneyIn && (
-                  <Field label="Masuk ke akaun" required error={errors.receivedAccountId}>
-                    <Select value={receivedAccountId} onChange={(e) => setReceivedAccountId(e.target.value ? Number(e.target.value) : '')}>
-                      <option value="">— Pilih akaun —</option>
-                      {accounts.filter((a) => a.isActive).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </Select>
-                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Masuk ke akaun" required error={errors.receivedAccountId}>
+                      <Select value={receivedAccountId} onChange={(e) => setReceivedAccountId(e.target.value ? Number(e.target.value) : '')}>
+                        <option value="">— Pilih akaun —</option>
+                        {accounts.filter((a) => a.isActive).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </Select>
+                    </Field>
+                    <Field label="Tunai / Bank" required error={errors.receivedChannel}>
+                      <ChannelPicker value={receivedChannel} onChange={setReceivedChannel} />
+                    </Field>
+                  </div>
                 )}
               </div>
             )}

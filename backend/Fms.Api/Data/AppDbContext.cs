@@ -62,6 +62,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Name).HasMaxLength(100).IsRequired();
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.OpeningBalance).HasPrecision(18, 2);
+            e.Property(x => x.OpeningCash).HasPrecision(18, 2);
+            e.Property(x => x.OpeningBank).HasPrecision(18, 2);
             e.HasIndex(x => x.Name).IsUnique();
         });
 
@@ -78,6 +80,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(30);
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.Channel).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.ToChannel).HasConversion<string>().HasMaxLength(10);
             e.Property(x => x.Party).HasMaxLength(150);
             e.Property(x => x.Reference).HasMaxLength(50);
             e.Property(x => x.Description).HasMaxLength(500);

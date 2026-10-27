@@ -7,8 +7,14 @@ import { Money, cx } from './ui'
 /** Huraian satu baris rekod dalam bahasa mudah. */
 export function describe(t: Transaction): string {
   switch (t.type) {
-    case 'Transfer':
-      return `${t.accountName} → ${t.toAccountName ?? '?'}`
+    case 'Transfer': {
+      const from = t.channel ? ` (${channelLabel(t.channel)})` : ''
+      const to = t.toChannel ? ` (${channelLabel(t.toChannel)})` : ''
+      // Akaun sama: "Akaun Kedai: Tunai → Bank"
+      if (t.toAccountId === t.accountId && t.channel && t.toChannel)
+        return `${t.accountName}: ${channelLabel(t.channel)} → ${channelLabel(t.toChannel)}`
+      return `${t.accountName}${from} → ${t.toAccountName ?? '?'}${to}`
+    }
     case 'InternalLoan':
       return `${t.toBusinessUnitName ?? '?'} pinjam dari ${t.businessUnitName ?? '?'}`
     case 'OwnerWithdrawal':
@@ -36,7 +42,7 @@ export function TransactionRow({ t, onClick }: { t: Transaction; onClick?: () =>
         <span className="block truncate text-sm font-semibold text-ink">{describe(t)}</span>
         <span className="block truncate text-xs text-muted">
           {formatDate(t.date)} · {cfg.shortLabel}
-          {t.channel && ` · ${channelLabel(t.channel)}`}
+          {t.channel && t.type !== 'Transfer' && ` · ${channelLabel(t.channel)}`}
           {/* Akaun dipapar hanya jika berbeza dengan nama perniagaan (satu akaun bagi setiap perniagaan) */}
           {t.type !== 'Transfer' && t.accountName !== t.businessUnitName && ` · ${t.accountName}`}
           {t.description && ` · ${t.description}`}

@@ -197,7 +197,9 @@ export default function TransactionsPage() {
               {selected.categoryName && (<><dt className="text-muted">Kategori</dt><dd>{selected.categoryName}</dd></>)}
               {selected.familyMemberName && (<><dt className="text-muted">Ahli keluarga</dt><dd>{selected.familyMemberName}</dd></>)}
               <dt className="text-muted">Akaun</dt><dd>{selected.accountName}{selected.toAccountName ? ` → ${selected.toAccountName}` : ''}</dd>
-              {selected.channel && (<><dt className="text-muted">Tunai / Bank</dt><dd>{channelLabel(selected.channel)}</dd></>)}
+              {selected.channel && (
+                <><dt className="text-muted">Tunai / Bank</dt><dd>{channelLabel(selected.channel)}{selected.toChannel ? ` → ${channelLabel(selected.toChannel)}` : ''}</dd></>
+              )}
               {selected.party && (<><dt className="text-muted">Pihak</dt><dd>{selected.party}</dd></>)}
               {selected.reference && (<><dt className="text-muted">Rujukan</dt><dd>{selected.reference}</dd></>)}
               {selected.description && (<><dt className="text-muted">Catatan</dt><dd>{selected.description}</dd></>)}

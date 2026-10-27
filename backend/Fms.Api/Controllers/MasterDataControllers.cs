@@ -94,7 +94,7 @@ public class AccountsController(AppDbContext db, AuditService audit, ReportServi
         await db.Accounts.AsNoTracking()
             .Where(x => includeInactive || x.IsActive)
             .OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
-            .Select(x => new AccountDto(x.Id, x.Name, x.Type, x.OpeningBalance, x.BusinessUnitId, x.SortOrder, x.IsActive))
+            .Select(x => new AccountDto(x.Id, x.Name, x.Type, x.OpeningBalance, x.OpeningCash, x.OpeningBank, x.BusinessUnitId, x.SortOrder, x.IsActive))
             .ToListAsync();
 
     [HttpGet("balances"), Authorize(Policy = Policies.AnyUser)]
@@ -143,11 +143,16 @@ public class AccountsController(AppDbContext db, AuditService audit, ReportServi
 
     private static void Apply(Account e, AccountInput i)
     {
-        e.Name = i.Name.Trim(); e.Type = i.Type; e.OpeningBalance = i.OpeningBalance;
+        e.Name = i.Name.Trim(); e.Type = i.Type;
+        // Baki awal Tunai + Bank. Jumlah disimpan juga kerana semua laporan baki guna OpeningBalance.
+        e.OpeningCash = Math.Round(i.OpeningCash, 2);
+        e.OpeningBank = Math.Round(i.OpeningBank, 2);
+        e.OpeningBalance = e.OpeningCash + e.OpeningBank;
         e.BusinessUnitId = i.BusinessUnitId; e.SortOrder = i.SortOrder; e.IsActive = i.IsActive;
     }
 
-    private static AccountDto ToDto(Account x) => new(x.Id, x.Name, x.Type, x.OpeningBalance, x.BusinessUnitId, x.SortOrder, x.IsActive);
+    private static AccountDto ToDto(Account x) => new(x.Id, x.Name, x.Type, x.OpeningBalance, x.OpeningCash, x.OpeningBank,
+        x.BusinessUnitId, x.SortOrder, x.IsActive);
 }
 
 [ApiController]

@@ -40,7 +40,9 @@ public record PayableInput(
     decimal? InstallmentAmount,
     [MaxLength(1000)] string? Notes,
     // Pinjaman sahaja: akaun yang menerima duit pinjaman. Kosong = duit diterima sebelum guna sistem.
-    int? ReceivedAccountId);
+    int? ReceivedAccountId,
+    // Pinjaman sahaja: duit masuk sebagai Tunai atau Bank
+    MoneyChannel? ReceivedChannel = null);
 
 public record PayableListItem(int Id, string Number, PayableKind Kind, DateOnly Date, DateOnly DueDate,
     int SupplierId, string SupplierName, int BusinessUnitId, string BusinessUnitName,
@@ -54,6 +56,7 @@ public record PayableDto(
     string Description, string? SupplierReference, decimal Amount, decimal AmountPaid, decimal Balance,
     decimal? InstallmentAmount, decimal InterestPaid, PayableStatus Status, bool IsOverdue, int DaysToDue,
     string? Notes, string? CancelReason, int? ReceivedTransactionId, int? ReceivedAccountId, string? ReceivedAccountName,
+    MoneyChannel? ReceivedChannel,
     IReadOnlyList<PayablePaymentDto> Payments, string CreatedBy, DateTime CreatedAt, DateTime? UpdatedAt);
 
 public record PayablePaymentInput(

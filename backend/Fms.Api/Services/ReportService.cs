@@ -50,8 +50,7 @@ public class ReportService(AppDbContext db, IOptions<AppOptions> options)
 
         var businesses = ProfitRows(units, scoped, businessUnitId);
 
-        var balances = Balances(accounts, all);
-        var accountDtos = accounts.Select(a => new AccountBalanceDto(a.Id, a.Name, a.Type, balances[a.Id], balances[a.Id] < _opt.LowBalanceThreshold)).ToList();
+        var accountDtos = AccountBalances(accounts, all);
 
         var income = scoped.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
         var expense = scoped.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
@@ -80,7 +79,8 @@ public class ReportService(AppDbContext db, IOptions<AppOptions> options)
 
         return new DashboardDto(
             period,
-            new TotalsDto(income, expense, income - expense, withdrawals, capital, accountDtos.Sum(a => a.Balance)),
+            new TotalsDto(income, expense, income - expense, withdrawals, capital, accountDtos.Sum(a => a.Balance),
+                accountDtos.Sum(a => a.Cash), accountDtos.Sum(a => a.Bank), accountDtos.Sum(a => a.Unlabelled)),
             businesses,
             accountDtos,
             expenseByCategory,
@@ -210,8 +210,27 @@ public class ReportService(AppDbContext db, IOptions<AppOptions> options)
     public async Task<IReadOnlyList<AccountBalanceDto>> BalancesAsync()
     {
         var accounts = await db.Accounts.AsNoTracking().Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToListAsync();
-        var balances = Balances(accounts, await LoadAsync(null, Today));
-        return accounts.Select(a => new AccountBalanceDto(a.Id, a.Name, a.Type, balances[a.Id], balances[a.Id] < _opt.LowBalanceThreshold)).ToList();
+        return AccountBalances(accounts, await LoadAsync(null, Today));
+    }
+
+    /// <summary>Baki setiap akaun, dipecah Tunai / Bank. Satu-satunya tempat baki akaun dikira untuk paparan.</summary>
+    private List<AccountBalanceDto> AccountBalances(List<Account> accounts, IEnumerable<Transaction> tx)
+    {
+        var total = Balances(accounts, tx);
+        var cash = accounts.ToDictionary(a => a.Id, a => a.OpeningCash);
+        var bank = accounts.ToDictionary(a => a.Id, a => a.OpeningBank);
+        foreach (var t in tx)
+            foreach (var (acc, channel, delta) in Ledger.ChannelEffects(t))
+            {
+                if (channel == MoneyChannel.Cash && cash.ContainsKey(acc)) cash[acc] += delta;
+                else if (channel == MoneyChannel.Bank && bank.ContainsKey(acc)) bank[acc] += delta;
+            }
+        return accounts.Select(a => new AccountBalanceDto(
+            a.Id, a.Name, a.Type, total[a.Id], total[a.Id] < _opt.LowBalanceThreshold,
+            cash[a.Id], bank[a.Id],
+            // Baki lain (rekod tanpa label, atau baki awal yang belum dipecah) supaya Tunai + Bank + ini = jumlah
+            total[a.Id] - cash[a.Id] - bank[a.Id],
+            a.BusinessUnitId)).ToList();
     }
 
     // ---------------------------------------------------------------- helpers

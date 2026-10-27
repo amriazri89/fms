@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS `Accounts` (
     `Id` INT NOT NULL AUTO_INCREMENT,
     `Name` VARCHAR(100) NOT NULL,
     `Type` VARCHAR(20) NOT NULL,  -- Cash | Bank
-    `OpeningBalance` DECIMAL(18,2) NOT NULL,  -- baki pada hari mula guna sistem
+    `OpeningBalance` DECIMAL(18,2) NOT NULL,  -- baki pada hari mula guna sistem = OpeningCash + OpeningBank
+    `OpeningCash` DECIMAL(18,2) NOT NULL DEFAULT 0,  -- baki awal dalam tunai
+    `OpeningBank` DECIMAL(18,2) NOT NULL DEFAULT 0,  -- baki awal dalam bank
     `BusinessUnitId` INT NULL,  -- NULL = akaun dikongsi
     `SortOrder` INT NOT NULL,
     `IsActive` TINYINT(1) NOT NULL,
@@ -96,7 +98,8 @@ CREATE TABLE IF NOT EXISTS `Transactions` (
     `AccountId` INT NOT NULL,
     `ToAccountId` INT NULL,
     `CategoryId` INT NULL,
-    `Channel` VARCHAR(10) NULL,  -- Cash | Bank (label Tunai / Bank)
+    `Channel` VARCHAR(10) NULL,  -- Cash | Bank (label Tunai / Bank; pindahan: bahagian asal)
+    `ToChannel` VARCHAR(10) NULL,  -- pindahan sahaja: Cash | Bank di destinasi
     `FamilyMemberId` INT NULL,
     `Party` VARCHAR(150) NULL,  -- pelanggan / pembekal
     `Reference` VARCHAR(50) NULL,  -- no. resit jika dari modul jualan

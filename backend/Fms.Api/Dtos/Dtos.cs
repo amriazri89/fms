@@ -21,8 +21,10 @@ public record BusinessUnitInput([Required, MaxLength(100)] string Name, string? 
     [MaxLength(50)] string? Phone = null, [MaxLength(100)] string? Email = null, [MaxLength(300)] string? PaymentInfo = null,
     [MaxLength(300)] string? DocumentFooter = null);
 
-public record AccountDto(int Id, string Name, AccountType Type, decimal OpeningBalance, int? BusinessUnitId, int SortOrder, bool IsActive);
-public record AccountInput([Required, MaxLength(100)] string Name, AccountType Type, decimal OpeningBalance, int? BusinessUnitId, int SortOrder, bool IsActive = true);
+public record AccountDto(int Id, string Name, AccountType Type, decimal OpeningBalance, decimal OpeningCash, decimal OpeningBank,
+    int? BusinessUnitId, int SortOrder, bool IsActive);
+public record AccountInput([Required, MaxLength(100)] string Name, AccountType Type, decimal OpeningCash, decimal OpeningBank,
+    int? BusinessUnitId, int SortOrder, bool IsActive = true);
 
 public record CategoryDto(int Id, string Name, CategoryType Type, int? BusinessUnitId, int SortOrder, bool IsActive);
 public record CategoryInput([Required, MaxLength(100)] string Name, CategoryType Type, int? BusinessUnitId, int SortOrder, bool IsActive = true);
@@ -44,7 +46,8 @@ public record TransactionInput(
     [MaxLength(150)] string? Party,
     [MaxLength(50)] string? Reference,
     [MaxLength(500)] string? Description,
-    MoneyChannel? Channel = null);
+    MoneyChannel? Channel = null,
+    MoneyChannel? ToChannel = null);
 
 public record TransactionDto(
     int Id, DateOnly Date, TransactionType Type, decimal Amount,
@@ -53,7 +56,7 @@ public record TransactionDto(
     int AccountId, string AccountName,
     int? ToAccountId, string? ToAccountName,
     int? CategoryId, string? CategoryName,
-    MoneyChannel? Channel,
+    MoneyChannel? Channel, MoneyChannel? ToChannel,
     int? FamilyMemberId, string? FamilyMemberName,
     string? Party, string? Reference, string? Description,
     string CreatedBy, DateTime CreatedAt, DateTime? UpdatedAt);
@@ -67,9 +70,12 @@ public record PagedTransactions(IReadOnlyList<TransactionDto> Items, int Total, 
 
 // ---------- Dashboard & reports ----------
 public record PeriodDto(DateOnly From, DateOnly To);
-public record TotalsDto(decimal Income, decimal Expense, decimal Profit, decimal Withdrawals, decimal Capital, decimal TotalMoney);
+public record TotalsDto(decimal Income, decimal Expense, decimal Profit, decimal Withdrawals, decimal Capital, decimal TotalMoney,
+    decimal TotalCash, decimal TotalBank, decimal TotalUnlabelled);
 public record BusinessProfitDto(int BusinessUnitId, string Name, string? Color, decimal Income, decimal Expense, decimal Profit, decimal Withdrawals);
-public record AccountBalanceDto(int Id, string Name, AccountType Type, decimal Balance, bool IsLow);
+/// <summary>Balance = Cash + Bank + Unlabelled (rekod lama tanpa label Tunai/Bank).</summary>
+public record AccountBalanceDto(int Id, string Name, AccountType Type, decimal Balance, bool IsLow,
+    decimal Cash, decimal Bank, decimal Unlabelled, int? BusinessUnitId);
 public record NamedAmountDto(string Name, decimal Amount);
 public record MonthlyPointDto(string Month, decimal Income, decimal Expense, decimal Profit);
 public record InternalLoanDto(int LenderId, string Lender, int BorrowerId, string Borrower, decimal Outstanding);
