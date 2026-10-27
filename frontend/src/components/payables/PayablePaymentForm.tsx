@@ -7,6 +7,7 @@ import { paymentMethods } from '../../config/sales'
 import { parseNum } from '../../lib/documentMath'
 import { formatRM, today } from '../../lib/format'
 import { Button, ErrorBox, Field, Input, Select, cx } from '../ui'
+import { accountForBusiness } from '../../config/channels'
 
 /**
  * Bayar hutang → baucar bayaran.
@@ -27,7 +28,9 @@ export function PayablePaymentForm({ payable, onSaved, onCancel }: {
   const [amount, setAmount] = useState(String(defaultPrincipal))
   const [interest, setInterest] = useState('')
   const [date, setDate] = useState(today())
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, payable.businessUnitId)?.id || ''
   const [method, setMethod] = useState<PaymentMethod>(isLoan ? 'BankTransfer' : 'Cash')
   const [reference, setReference] = useState('')
   const [notes, setNotes] = useState('')

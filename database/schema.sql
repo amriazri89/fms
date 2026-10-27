@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS `Transactions` (
     `AccountId` INT NOT NULL,
     `ToAccountId` INT NULL,
     `CategoryId` INT NULL,
+    `Channel` VARCHAR(10) NULL,  -- Cash | Bank (label Tunai / Bank)
     `FamilyMemberId` INT NULL,
     `Party` VARCHAR(150) NULL,  -- pelanggan / pembekal
     `Reference` VARCHAR(50) NULL,  -- no. resit jika dari modul jualan

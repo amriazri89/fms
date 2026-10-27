@@ -7,6 +7,7 @@ import { paymentMethods } from '../../config/sales'
 import { parseNum } from '../../lib/documentMath'
 import { formatRM, today } from '../../lib/format'
 import { Button, ErrorBox, Field, Input, Select, cx } from '../ui'
+import { accountForBusiness } from '../../config/channels'
 
 /**
  * Terima bayaran → resit. Jika ada invois, perniagaan & pelanggan diambil dari invois
@@ -34,7 +35,9 @@ export function PaymentForm({
   const [businessUnitId, setBusinessUnitId] = useState<number | ''>(invoice?.businessUnitId ?? '')
   const [customerId, setCustomerId] = useState<number | ''>(invoice?.customerId ?? defaultCustomerId ?? '')
   const [receivedFrom, setReceivedFrom] = useState('')
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, businessUnitId || null)?.id || ''
   const [categoryId, setCategoryId] = useState<number | ''>('')
   const [method, setMethod] = useState<PaymentMethod>('Cash')
   const [reference, setReference] = useState('')

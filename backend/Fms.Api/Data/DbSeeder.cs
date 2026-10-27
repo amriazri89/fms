@@ -27,7 +27,8 @@ public static class DbSeeder
         new("Lain-lain", "#6B7280", "Projek kecil-kecilan", []),
     ];
 
-    private static readonly (string Name, AccountType Type)[] AccountSeeds =
+    /// <summary>Akaun contoh lama (data demo sahaja). Sistem sebenar: satu akaun bagi setiap perniagaan.</summary>
+    private static readonly (string Name, AccountType Type)[] DemoAccountSeeds =
     [
         ("Tunai Kebun", AccountType.Cash),
         ("Tunai Kedai", AccountType.Cash),
@@ -88,7 +89,10 @@ public static class DbSeeder
         }
         db.Categories.AddRange(cats);
 
-        var accounts = AccountSeeds.Select((a, i) => new Account { Name = a.Name, Type = a.Type, SortOrder = i + 1 }).ToList();
+        // Satu akaun bagi setiap perniagaan (baki satu jumlah). Tunai / Bank ialah label pada setiap rekod.
+        var accounts = options.SeedDemoData
+            ? DemoAccountSeeds.Select((a, i) => new Account { Name = a.Name, Type = a.Type, SortOrder = i + 1 }).ToList()
+            : units.Select((u, i) => new Account { Name = u.Name, Type = AccountType.Cash, BusinessUnitId = u.Id, SortOrder = i + 1 }).ToList();
         db.Accounts.AddRange(accounts);
 
         var members = new List<FamilyMember>
@@ -136,6 +140,7 @@ public static class DbSeeder
             tx.Add(new Transaction
             {
                 Date = d, Type = t, Amount = Math.Round(amt, 2), BusinessUnitId = u?.Id, AccountId = a.Id,
+                Channel = TransactionRules.For(t).Channel == FieldRule.Hidden ? null : DemoChannel(a),
                 CategoryId = c?.Id, Party = party, Description = desc, ToAccountId = toA?.Id,
                 ToBusinessUnitId = toU?.Id, FamilyMemberId = m?.Id, CreatedById = admin.Id
             });
@@ -269,7 +274,7 @@ public static class DbSeeder
             p.Transaction = new Transaction
             {
                 Date = date, Type = TransactionType.Income, Amount = amount, BusinessUnitId = b.Id, AccountId = acc.Id,
-                CategoryId = sale.Id, Party = p.ReceivedFrom, Reference = p.Number,
+                Channel = Ledger.ChannelFor(method), CategoryId = sale.Id, Party = p.ReceivedFrom, Reference = p.Number,
                 Description = inv is not null ? $"Bayaran {inv.Number}" : desc, CreatedById = admin.Id,
             };
             db.Payments.Add(p);
@@ -361,7 +366,7 @@ public static class DbSeeder
                 pay.PrincipalTransaction = new Transaction
                 {
                     Date = date, Type = p.Kind == PayableKind.Bill ? TransactionType.Expense : TransactionType.LoanRepayment,
-                    Amount = principal, BusinessUnitId = p.BusinessUnitId, AccountId = acc.Id,
+                    Amount = principal, BusinessUnitId = p.BusinessUnitId, AccountId = acc.Id, Channel = Ledger.ChannelFor(method),
                     CategoryId = p.Kind == PayableKind.Bill ? p.CategoryId : null,
                     Party = sup.Name, Reference = pay.Number, Description = $"Bayar {p.Number}: {p.Description}", CreatedById = admin.Id,
                 };
@@ -371,7 +376,7 @@ public static class DbSeeder
                 pay.InterestTransaction = new Transaction
                 {
                     Date = date, Type = TransactionType.Expense, Amount = interest, BusinessUnitId = p.BusinessUnitId, AccountId = acc.Id,
-                    CategoryId = interestCat.Id, Party = sup.Name, Reference = pay.Number,
+                    Channel = Ledger.ChannelFor(method), CategoryId = interestCat.Id, Party = sup.Name, Reference = pay.Number,
                     Description = $"Faedah / caj {p.Number}: {p.Description}", CreatedById = admin.Id,
                 };
             }
@@ -414,7 +419,7 @@ public static class DbSeeder
         Transaction Out(DateOnly date, decimal amount, BusinessUnit b, Account acc, Category cat, string? party, string reference, string desc) => new()
         {
             Date = date, Type = TransactionType.Expense, Amount = amount, BusinessUnitId = b.Id, AccountId = acc.Id, CategoryId = cat.Id,
-            Party = party, Reference = reference, Description = desc, CreatedById = clerk.Id,
+            Channel = DemoChannel(acc), Party = party, Reference = reference, Description = desc, CreatedById = clerk.Id,
         };
         var monthStart = new DateOnly(today.Year, today.Month, 1);
 
@@ -519,4 +524,6 @@ public static class DbSeeder
         db.DocumentSequences.AddRange(counters.Select(kv => new DocumentSequence { Type = kv.Key.Item1, Year = kv.Key.Item2, LastNumber = kv.Value }));
         await db.SaveChangesAsync();
     }
+
+    private static MoneyChannel DemoChannel(Account a) => a.Type == AccountType.Cash ? MoneyChannel.Cash : MoneyChannel.Bank;
 }

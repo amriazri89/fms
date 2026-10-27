@@ -1,4 +1,5 @@
 import type { Transaction } from '../api/types'
+import { channelLabel } from '../config/channels'
 import { typeConfig } from '../config/transactionTypes'
 import { formatDate } from '../lib/format'
 import { Money, cx } from './ui'
@@ -35,7 +36,9 @@ export function TransactionRow({ t, onClick }: { t: Transaction; onClick?: () =>
         <span className="block truncate text-sm font-semibold text-ink">{describe(t)}</span>
         <span className="block truncate text-xs text-muted">
           {formatDate(t.date)} · {cfg.shortLabel}
-          {t.type !== 'Transfer' && ` · ${t.accountName}`}
+          {t.channel && ` · ${channelLabel(t.channel)}`}
+          {/* Akaun dipapar hanya jika berbeza dengan nama perniagaan (satu akaun bagi setiap perniagaan) */}
+          {t.type !== 'Transfer' && t.accountName !== t.businessUnitName && ` · ${t.accountName}`}
           {t.description && ` · ${t.description}`}
         </span>
       </span>

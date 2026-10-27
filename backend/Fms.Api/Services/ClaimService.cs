@@ -135,7 +135,7 @@ public class ClaimService(
         c.PaidDate = pay.PaidDate;
         c.PaidAccountId = pay.AccountId;
         c.Method = pay.Method;
-        c.Transaction = staff.Expense(pay.PaidDate, c.Amount, c.BusinessUnitId, pay.AccountId, c.CategoryId, claimant, c.Number,
+        c.Transaction = staff.Expense(pay.PaidDate, c.Amount, c.BusinessUnitId, pay.AccountId, pay.Method, c.CategoryId, claimant, c.Number,
             $"Tuntutan {c.Number}: {c.Description}");
         c.UpdatedAt = DateTime.UtcNow;
         audit.Log(AuditActions.Update, "Claim", id, newValue: new { Paid = pay.PaidDate, pay.AccountId });

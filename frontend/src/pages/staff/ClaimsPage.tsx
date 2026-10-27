@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { openFile } from '../../api/client'
-import { useBusinessUnits, useCategories } from '../../api/hooks'
+import { useAccounts, useBusinessUnits, useCategories } from '../../api/hooks'
 import { useClaimMutations, useClaims, useEmployees } from '../../api/staffHooks'
 import type { Claim, ClaimStatus, PaymentMethod } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
@@ -13,6 +13,7 @@ import { paymentMethodLabel } from '../../config/sales'
 import { claimStatusView, expenseCategoriesFor, pickCategory } from '../../config/staff'
 import { parseNum } from '../../lib/documentMath'
 import { formatDate, formatDateTime, formatRM, today } from '../../lib/format'
+import { accountForBusiness } from '../../config/channels'
 
 type Filter = '' | ClaimStatus
 
@@ -88,7 +89,10 @@ function ClaimDetail({ claim, isManager, onDone }: { claim: Claim; isManager: bo
   const [paying, setPaying] = useState(false)
   const [unpaying, setUnpaying] = useState(false)
   const [paidDate, setPaidDate] = useState(today())
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  const { data: accounts = [] } = useAccounts()
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, claim.businessUnitId)?.id || ''
   const [method, setMethod] = useState<PaymentMethod>('Cash')
   const [error, setError] = useState<unknown>(null)
   const errs = fieldErrors(error)

@@ -13,6 +13,7 @@ public static class TransactionMapping
         t.AccountId, t.Account != null ? t.Account.Name : "",
         t.ToAccountId, t.ToAccount != null ? t.ToAccount.Name : null,
         t.CategoryId, t.Category != null ? t.Category.Name : null,
+        t.Channel,
         t.FamilyMemberId, t.FamilyMember != null ? t.FamilyMember.Name : null,
         t.Party, t.Reference, t.Description,
         t.CreatedBy != null ? t.CreatedBy.FullName : "",
@@ -22,6 +23,6 @@ public static class TransactionMapping
     public static object Snapshot(Transaction t) => new
     {
         t.Date, t.Type, t.Amount, t.BusinessUnitId, t.ToBusinessUnitId, t.AccountId, t.ToAccountId,
-        t.CategoryId, t.FamilyMemberId, t.Party, t.Reference, t.Description
+        t.CategoryId, t.Channel, t.FamilyMemberId, t.Party, t.Reference, t.Description
     };
 }

@@ -77,6 +77,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(30);
             e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Channel).HasConversion<string>().HasMaxLength(10);
             e.Property(x => x.Party).HasMaxLength(150);
             e.Property(x => x.Reference).HasMaxLength(50);
             e.Property(x => x.Description).HasMaxLength(500);

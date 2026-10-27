@@ -19,6 +19,8 @@ export interface TransactionTypeConfig {
     category: FieldRule
     familyMember: FieldRule
     party: FieldRule
+    /** Tunai / Bank */
+    channel: FieldRule
   }
   labels: {
     business?: string
@@ -40,7 +42,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'income',
     icon: '+',
     allowedRoles: ['Manager', 'Clerk'],
-    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'required', familyMember: 'hidden', party: 'optional' },
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'required', familyMember: 'hidden', party: 'optional', channel: 'required' },
     labels: { business: 'Perniagaan', account: 'Duit masuk ke', party: 'Pelanggan' },
   },
   {
@@ -52,7 +54,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'expense',
     icon: '−',
     allowedRoles: ['Manager', 'Clerk'],
-    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'required', familyMember: 'hidden', party: 'optional' },
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'required', familyMember: 'hidden', party: 'optional', channel: 'required' },
     labels: { business: 'Perniagaan', account: 'Bayar guna', party: 'Pembekal' },
   },
   {
@@ -64,7 +66,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'neutral',
     icon: '⇄',
     allowedRoles: ['Manager', 'Clerk'],
-    fields: { business: 'hidden', toBusiness: 'hidden', toAccount: 'required', category: 'hidden', familyMember: 'hidden', party: 'hidden' },
+    fields: { business: 'hidden', toBusiness: 'hidden', toAccount: 'required', category: 'hidden', familyMember: 'hidden', party: 'hidden', channel: 'hidden' },
     labels: { account: 'Dari akaun', toAccount: 'Ke akaun' },
   },
   {
@@ -76,7 +78,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'neutral',
     icon: '↗',
     allowedRoles: ['Manager', 'Clerk'],
-    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'required', party: 'hidden' },
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'required', party: 'hidden', channel: 'optional' },
     labels: { business: 'Duit perniagaan', account: 'Diambil dari' },
   },
   {
@@ -88,7 +90,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'neutral',
     icon: '↙',
     allowedRoles: ['Manager', 'Clerk'],
-    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'required', party: 'hidden' },
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'required', party: 'hidden', channel: 'optional' },
     labels: { business: 'Untuk perniagaan', account: 'Masuk ke' },
   },
   {
@@ -100,7 +102,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'neutral',
     icon: '↔',
     allowedRoles: ['Manager', 'Clerk'],
-    fields: { business: 'required', toBusiness: 'required', toAccount: 'required', category: 'hidden', familyMember: 'hidden', party: 'hidden' },
+    fields: { business: 'required', toBusiness: 'required', toAccount: 'required', category: 'hidden', familyMember: 'hidden', party: 'hidden', channel: 'hidden' },
     labels: { business: 'Perniagaan pemberi', toBusiness: 'Perniagaan peminjam', account: 'Dari akaun', toAccount: 'Ke akaun' },
   },
   // Dua jenis di bawah dijana oleh menu "Hutang kita" sahaja (allowedRoles kosong = tidak boleh rekod terus)
@@ -113,7 +115,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'neutral',
     icon: '⬇',
     allowedRoles: [],
-    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional' },
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional', channel: 'hidden' },
     labels: { business: 'Untuk perniagaan', account: 'Masuk ke', party: 'Pemberi pinjaman' },
   },
   {
@@ -125,7 +127,7 @@ export const transactionTypes: TransactionTypeConfig[] = [
     tone: 'neutral',
     icon: '⬆',
     allowedRoles: [],
-    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional' },
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional', channel: 'hidden' },
     labels: { business: 'Perniagaan', account: 'Bayar guna', party: 'Pemberi pinjaman' },
   },
 ]

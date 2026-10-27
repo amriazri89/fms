@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useBusinessUnits, useCategories } from '../../api/hooks'
+import { useAccounts, useBusinessUnits, useCategories } from '../../api/hooks'
 import { useUtilities, useUtilityMutations } from '../../api/staffHooks'
 import type { PaymentMethod, UtilityBill, UtilityType } from '../../api/types'
 import { Icon } from '../../components/Icon'
@@ -11,6 +11,7 @@ import { paymentMethodLabel } from '../../config/sales'
 import { expenseCategoriesFor, formatPeriod, pickCategory, thisMonth, utilityLabel, utilityTypes } from '../../config/staff'
 import { parseNum } from '../../lib/documentMath'
 import { addDays, formatDate, today } from '../../lib/format'
+import { accountForBusiness } from '../../config/channels'
 
 const filters = [
   { key: 'unpaid', label: 'Belum bayar' },
@@ -90,7 +91,10 @@ function UtilityForm({ existing, onDone }: { existing?: UtilityBill; onDone: () 
   const [amount, setAmount] = useState(existing ? String(existing.amount) : '')
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [paidNow, setPaidNow] = useState(false)
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  const { data: accounts = [] } = useAccounts()
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, businessUnitId || null)?.id || ''
   const [method, setMethod] = useState<PaymentMethod>('BankTransfer')
   const [error, setError] = useState<unknown>(null)
   const errs = fieldErrors(error)
@@ -185,7 +189,10 @@ function UtilityForm({ existing, onDone }: { existing?: UtilityBill; onDone: () 
 function PayUtilityForm({ bill, onDone }: { bill: UtilityBill; onDone: () => void }) {
   const { pay } = useUtilityMutations()
   const [paidDate, setPaidDate] = useState(today())
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  const { data: accounts = [] } = useAccounts()
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, bill.businessUnitId)?.id || ''
   const [method, setMethod] = useState<PaymentMethod>('BankTransfer')
   const [reference, setReference] = useState('')
   const [error, setError] = useState<unknown>(null)

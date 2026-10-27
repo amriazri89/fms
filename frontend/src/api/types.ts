@@ -2,6 +2,8 @@
 
 export type UserRole = 'Manager' | 'Clerk'
 export type AccountType = 'Cash' | 'Bank'
+/** Label Tunai / Bank pada rekod duit (Domain/Enums.cs MoneyChannel) */
+export type MoneyChannel = 'Cash' | 'Bank'
 export type CategoryType = 'Income' | 'Expense'
 export type TransactionType =
   | 'Income'
@@ -83,6 +85,8 @@ export interface TransactionInput {
   party: string | null
   reference: string | null
   description: string | null
+  /** Tunai / Bank — wajib untuk Duit Masuk & Duit Keluar */
+  channel: MoneyChannel | null
 }
 
 export interface Transaction extends TransactionInput {
@@ -114,6 +118,7 @@ export interface TransactionFilter {
   businessUnitId?: number
   accountId?: number
   categoryId?: number
+  channel?: MoneyChannel
   q?: string
   page?: number
   pageSize?: number

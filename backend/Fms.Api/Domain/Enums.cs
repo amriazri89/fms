@@ -16,6 +16,16 @@ public enum AccountType
     Bank = 2
 }
 
+/// <summary>
+/// Label Tunai / Bank pada setiap rekod duit (untuk tapisan & laporan).
+/// Baki tetap dikira ikut akaun — satu akaun bagi setiap perniagaan.
+/// </summary>
+public enum MoneyChannel
+{
+    Cash = 1,
+    Bank = 2
+}
+
 public enum CategoryType
 {
     Income = 1,

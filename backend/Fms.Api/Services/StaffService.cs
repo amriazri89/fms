@@ -148,7 +148,7 @@ public class StaffService(
                 AccountId = i.AccountId, CategoryId = i.CategoryId, Method = i.Method, Notes = Clean(i.Notes), CreatedById = user.Id,
             };
             w.Number = await DocumentNumbers.NextAsync(db, _doc, DocumentType.Payslip, w.PayDate);
-            w.Transaction = Expense(w.PayDate, net, w.BusinessUnitId, w.AccountId, w.CategoryId, emp!.Name, w.Number,
+            w.Transaction = Expense(w.PayDate, net, w.BusinessUnitId, w.AccountId, w.Method, w.CategoryId, emp!.Name, w.Number,
                 $"Gaji {emp.Name} ({MonthLabel(w.PeriodMonth)})");
             db.Wages.Add(w);
             await db.SaveChangesAsync();
@@ -316,7 +316,7 @@ public class StaffService(
         u.PaidAccountId = pay.AccountId;
         u.Method = pay.Method;
         u.Reference = Clean(pay.Reference);
-        u.Transaction = Expense(pay.PaidDate, u.Amount, u.BusinessUnitId, pay.AccountId, u.CategoryId, u.Provider, u.Number,
+        u.Transaction = Expense(pay.PaidDate, u.Amount, u.BusinessUnitId, pay.AccountId, pay.Method, u.CategoryId, u.Provider, u.Number,
             $"Bil {UtilityLabel(u.Type)} {MonthLabel(u.PeriodMonth)}");
     }
 
@@ -324,11 +324,11 @@ public class StaffService(
     // Helpers (dikongsi dengan ClaimService)
     // =====================================================================
 
-    internal Transaction Expense(DateOnly date, decimal amount, int businessUnitId, int accountId, int categoryId, string? party,
-        string reference, string description) => new()
+    internal Transaction Expense(DateOnly date, decimal amount, int businessUnitId, int accountId, PaymentMethod method, int categoryId,
+        string? party, string reference, string description) => new()
     {
         Date = date, Type = TransactionType.Expense, Amount = amount, BusinessUnitId = businessUnitId, AccountId = accountId,
-        CategoryId = categoryId, Party = party, Reference = reference, Description = Truncate(description, 500), CreatedById = user.Id,
+        Channel = Ledger.ChannelFor(method), CategoryId = categoryId, Party = party, Reference = reference, Description = Truncate(description, 500), CreatedById = user.Id,
     };
 
     internal async Task RemoveTransactionAsync(int? transactionId)

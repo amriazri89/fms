@@ -97,6 +97,9 @@ public class Transaction
     public int? CategoryId { get; set; }
     public Category? Category { get; set; }
 
+    /// <summary>Tunai atau Bank. Wajib untuk Duit Masuk / Duit Keluar.</summary>
+    public MoneyChannel? Channel { get; set; }
+
     public int? FamilyMemberId { get; set; }
     public FamilyMember? FamilyMember { get; set; }
 

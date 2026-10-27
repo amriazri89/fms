@@ -10,6 +10,7 @@ import { Button, Card, ErrorBox, Field, Input, Select, Spinner, Textarea, cx } f
 import { defaultBillTermDays, payableKinds } from '../../config/payables'
 import { parseNum } from '../../lib/documentMath'
 import { addDays, today } from '../../lib/format'
+import { accountForBusiness } from '../../config/channels'
 
 export default function PayableFormPage() {
   const params = useParams()
@@ -35,7 +36,9 @@ export default function PayableFormPage() {
   const [installment, setInstallment] = useState('')
   const [notes, setNotes] = useState('')
   const [moneyIn, setMoneyIn] = useState(true)
-  const [receivedAccountId, setReceivedAccountId] = useState<number | ''>('')
+  const [receivedAccountChosen, setReceivedAccountId] = useState<number | ''>('')
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const receivedAccountId = receivedAccountChosen || accountForBusiness(accounts, businessUnitId || null)?.id || ''
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<unknown>(null)
   const [addingSupplier, setAddingSupplier] = useState(false)

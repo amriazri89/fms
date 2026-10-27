@@ -33,6 +33,10 @@ public static class Ledger
         }
     }
 
+    /// <summary>Label Tunai / Bank untuk rekod yang dijana dari kaedah bayaran (resit, gaji, bil, hutang, tuntutan).</summary>
+    public static MoneyChannel ChannelFor(PaymentMethod method) =>
+        method == PaymentMethod.Cash ? MoneyChannel.Cash : MoneyChannel.Bank;
+
     public static bool CountsAsProfit(TransactionType type) =>
         type is TransactionType.Income or TransactionType.Expense;
 

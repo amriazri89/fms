@@ -29,10 +29,16 @@ public static class SchemaInitializer
 {
     private const string ResourceName = "schema.sql";
 
-    /// <summary>Kolum baru untuk jadual lama. Contoh: ("Employees", "Email", "VARCHAR(100) NULL").</summary>
-    private static readonly (string Table, string Column, string Definition)[] AddedColumns =
+    /// <summary>
+    /// Kolum baru untuk jadual lama. Contoh: ("Employees", "Email", "VARCHAR(100) NULL", null).
+    /// Backfill (pilihan) dijalankan SEKALI sahaja, sejurus selepas kolum ditambah.
+    /// </summary>
+    private static readonly (string Table, string Column, string Definition, string? Backfill)[] AddedColumns =
     [
-        ("Payments", "IsCreditPayment", "TINYINT(1) NOT NULL DEFAULT 0"),  // buku hutang kedai (555)
+        ("Payments", "IsCreditPayment", "TINYINT(1) NOT NULL DEFAULT 0", null),  // buku hutang kedai (555)
+        // Label Tunai / Bank. Rekod lama: ikut jenis akaun yang digunakan.
+        ("Transactions", "Channel", "VARCHAR(10) NULL",
+            "UPDATE `Transactions` t JOIN `Accounts` a ON a.`Id` = t.`AccountId` SET t.`Channel` = a.`Type` WHERE t.`Channel` IS NULL;"),
     ];
 
     public static void Apply(AppDbContext db, ILogger logger)
@@ -42,10 +48,11 @@ public static class SchemaInitializer
 
         Execute(conn, ReadSchema());   // CREATE TABLE IF NOT EXISTS ... (22 jadual)
 
-        foreach (var (table, column, definition) in AddedColumns)
+        foreach (var (table, column, definition, backfill) in AddedColumns)
         {
             if (ColumnExists(conn, table, column)) continue;
             Execute(conn, $"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition};");
+            if (backfill is not null) Execute(conn, backfill);
             logger.LogInformation("Kolum {Table}.{Column} ditambah.", table, column);
         }
     }

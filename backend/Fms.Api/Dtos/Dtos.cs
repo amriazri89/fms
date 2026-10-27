@@ -43,7 +43,8 @@ public record TransactionInput(
     int? FamilyMemberId,
     [MaxLength(150)] string? Party,
     [MaxLength(50)] string? Reference,
-    [MaxLength(500)] string? Description);
+    [MaxLength(500)] string? Description,
+    MoneyChannel? Channel = null);
 
 public record TransactionDto(
     int Id, DateOnly Date, TransactionType Type, decimal Amount,
@@ -52,13 +53,14 @@ public record TransactionDto(
     int AccountId, string AccountName,
     int? ToAccountId, string? ToAccountName,
     int? CategoryId, string? CategoryName,
+    MoneyChannel? Channel,
     int? FamilyMemberId, string? FamilyMemberName,
     string? Party, string? Reference, string? Description,
     string CreatedBy, DateTime CreatedAt, DateTime? UpdatedAt);
 
 public record TransactionQuery(
     DateOnly? From, DateOnly? To, TransactionType? Type, int? BusinessUnitId, int? AccountId,
-    int? CategoryId, string? Q, int Page = 1, int PageSize = 50);
+    int? CategoryId, MoneyChannel? Channel, string? Q, int Page = 1, int PageSize = 50);
 
 public record PagedTransactions(IReadOnlyList<TransactionDto> Items, int Total, int Page, int PageSize,
     decimal TotalIncome, decimal TotalExpense);

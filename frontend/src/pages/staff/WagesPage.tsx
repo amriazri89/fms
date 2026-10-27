@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { useBusinessUnits, useCategories } from '../../api/hooks'
+import { useAccounts, useBusinessUnits, useCategories } from '../../api/hooks'
 import { useEmployees, useWageMutations, useWages } from '../../api/staffHooks'
 import type { Employee, PaymentMethod, Wage } from '../../api/types'
 import { Icon } from '../../components/Icon'
@@ -11,6 +11,7 @@ import { paymentMethodLabel } from '../../config/sales'
 import { expenseCategoriesFor, formatPeriod, pickCategory, thisMonth } from '../../config/staff'
 import { parseNum } from '../../lib/documentMath'
 import { formatDate, formatRM, today } from '../../lib/format'
+import { accountForBusiness } from '../../config/channels'
 
 /** Manage Employee Wages: bayar gaji → Duit Keluar + slip gaji. */
 export default function WagesPage() {
@@ -96,7 +97,10 @@ function WageForm({ employees, employee, defaultMonth, onDone }: { employees: Em
   const [payDate, setPayDate] = useState(today())
   const [businessUnitId, setBusinessUnitId] = useState<number | ''>(employee?.businessUnitId ?? '')
   const [categoryId, setCategoryId] = useState<number | ''>('')
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  const { data: accounts = [] } = useAccounts()
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, businessUnitId || null)?.id || ''
   const [method, setMethod] = useState<PaymentMethod>('Cash')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<unknown>(null)

@@ -9,6 +9,7 @@ import { parseNum } from '../../lib/documentMath'
 import { formatRM, today } from '../../lib/format'
 import { CustomerFormModal } from '../sales/CustomerFormModal'
 import { Button, ErrorBox, Field, Input, Select, cx } from '../ui'
+import { accountForBusiness } from '../../config/channels'
 
 const fieldErrors = (ex: unknown) =>
   ex instanceof ApiError ? Object.fromEntries(Object.entries(ex.fieldErrors).map(([k, v]) => [k, v[0]])) : {}
@@ -151,7 +152,9 @@ export function CreditPaymentForm({
 
   const [amount, setAmount] = useState(String(ledger.balance))
   const [date, setDate] = useState(today())
-  const [accountId, setAccountId] = useState<number | ''>('')
+  const [accountChosen, setAccountId] = useState<number | ''>('')
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const accountId = accountChosen || accountForBusiness(accounts, ledger.businessUnitId)?.id || ''
   const [categoryId, setCategoryId] = useState<number | ''>('')
   const [method, setMethod] = useState<PaymentMethod>('Cash')
   const [reference, setReference] = useState('')

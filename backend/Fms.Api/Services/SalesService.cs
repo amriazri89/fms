@@ -582,6 +582,7 @@ public class SalesService(
             BusinessUnitId = businessUnitId,
             AccountId = p.AccountId,
             CategoryId = p.CategoryId,
+            Channel = Ledger.ChannelFor(p.Method),
             Party = p.ReceivedFrom,
             Reference = p.Number,
             Description = inv is not null ? $"Bayaran {inv.Number}" : p.Description,

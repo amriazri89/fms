@@ -3,13 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import { download } from '../api/client'
 import { useAccounts, useBusinessUnits, useTransaction, useTransactionMutations, useTransactions } from '../api/hooks'
 import { useDocumentSettings } from '../api/salesHooks'
-import type { Transaction, TransactionFilter, TransactionType } from '../api/types'
+import type { MoneyChannel, Transaction, TransactionFilter, TransactionType } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { PeriodFilter, usePeriod } from '../components/PeriodFilter'
 import { TransactionForm } from '../components/TransactionForm'
 import { TransactionRow } from '../components/TransactionRow'
 import { Button, Card, Empty, ErrorBox, Input, Modal, Money, PageHeader, Select, Spinner } from '../components/ui'
+import { channelLabel, channels } from '../config/channels'
 import { transactionTypes, typeConfig } from '../config/transactionTypes'
 import { formatDateTime } from '../lib/format'
 
@@ -25,6 +26,7 @@ export default function TransactionsPage() {
   const [type, setType] = useState<TransactionType | ''>('')
   const [businessUnitId, setBusinessUnitId] = useState<number | ''>('')
   const [accountId, setAccountId] = useState<number | ''>('')
+  const [channel, setChannel] = useState<MoneyChannel | ''>('')
   const [q, setQ] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -70,11 +72,12 @@ export default function TransactionsPage() {
     type: type || undefined,
     businessUnitId: businessUnitId || undefined,
     accountId: accountId || undefined,
+    channel: channel || undefined,
     q: search || undefined,
     page,
     pageSize: PAGE_SIZE,
   }
-  useEffect(() => setPage(1), [period.from, period.to, type, businessUnitId, accountId, search])
+  useEffect(() => setPage(1), [period.from, period.to, type, businessUnitId, accountId, channel, search])
 
   const { data, isLoading, error } = useTransactions(filter)
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
@@ -118,7 +121,7 @@ export default function TransactionsPage() {
       <Card>
         <div className="space-y-3">
           <PeriodFilter value={period} onChange={setPeriod} />
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <div className="relative">
               <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari catatan, pelanggan…" className="pl-9" />
@@ -139,6 +142,12 @@ export default function TransactionsPage() {
               <option value="">Semua akaun</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </Select>
+            <Select value={channel} onChange={(e) => setChannel(e.target.value as MoneyChannel | '')}>
+              <option value="">Tunai & Bank</option>
+              {channels.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </Select>
           </div>
@@ -188,6 +197,7 @@ export default function TransactionsPage() {
               {selected.categoryName && (<><dt className="text-muted">Kategori</dt><dd>{selected.categoryName}</dd></>)}
               {selected.familyMemberName && (<><dt className="text-muted">Ahli keluarga</dt><dd>{selected.familyMemberName}</dd></>)}
               <dt className="text-muted">Akaun</dt><dd>{selected.accountName}{selected.toAccountName ? ` → ${selected.toAccountName}` : ''}</dd>
+              {selected.channel && (<><dt className="text-muted">Tunai / Bank</dt><dd>{channelLabel(selected.channel)}</dd></>)}
               {selected.party && (<><dt className="text-muted">Pihak</dt><dd>{selected.party}</dd></>)}
               {selected.reference && (<><dt className="text-muted">Rujukan</dt><dd>{selected.reference}</dd></>)}
               {selected.description && (<><dt className="text-muted">Catatan</dt><dd>{selected.description}</dd></>)}

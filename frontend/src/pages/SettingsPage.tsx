@@ -61,7 +61,7 @@ function AccountsTab() {
   return (
     <MasterTable<Account>
       title="Akaun"
-      description="Tempat simpan duit — tunai atau bank. Baki awal ialah baki pada hari mula guna sistem."
+      description="Satu akaun bagi setiap perniagaan — baki satu jumlah. Tunai atau Bank dipilih pada setiap rekod Duit Masuk / Keluar. Baki awal ialah baki pada hari mula guna sistem."
       resource="accounts"
       cacheKey="accounts"
       rows={data}
@@ -77,7 +77,7 @@ function AccountsTab() {
       ]}
       columns={[
         { label: 'Nama', render: (r) => <span className="font-semibold">{r.name}</span> },
-        { label: 'Jenis', render: (r) => accountTypeLabel[r.type] },
+        { label: 'Milik perniagaan', render: (r) => (r.businessUnitId ? units.find((u) => u.id === r.businessUnitId)?.name ?? '?' : `Dikongsi · ${accountTypeLabel[r.type]}`) },
         { label: 'Baki awal', render: (r) => <Money value={r.openingBalance} />, className: 'text-right' },
       ]}
     />

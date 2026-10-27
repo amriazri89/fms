@@ -9,6 +9,7 @@ import { addDays, formatAmount, formatRM, today } from '../../lib/format'
 import { Icon } from '../Icon'
 import { Button, Card, ErrorBox, Field, Input, Select, Textarea, cx } from '../ui'
 import { CustomerFormModal } from './CustomerFormModal'
+import { accountForBusiness } from '../../config/channels'
 
 interface LineState {
   key: number
@@ -61,7 +62,9 @@ export function DocumentEditor(props: Props) {
 
   // Jualan tunai (invois baru sahaja)
   const [payNow, setPayNow] = useState(false)
-  const [payAccountId, setPayAccountId] = useState<number | ''>('')
+  const [payAccountChosen, setPayAccountId] = useState<number | ''>('')
+  // Satu akaun bagi setiap perniagaan: dipilih sendiri, masih boleh ditukar
+  const payAccountId = payAccountChosen || accountForBusiness(accounts, businessUnitId || null)?.id || ''
   const [payMethod, setPayMethod] = useState<PaymentMethod>('Cash')
   const [payReference, setPayReference] = useState('')
 

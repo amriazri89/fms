@@ -2,9 +2,10 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { useAccounts, useBusinessUnits, useCategories, useFamilyMembers, useTransactionMutations } from '../api/hooks'
 import type { Transaction, TransactionInput, TransactionType } from '../api/types'
+import { accountForBusiness, channels } from '../config/channels'
 import { typeConfig } from '../config/transactionTypes'
 import { today } from '../lib/format'
-import { Button, ErrorBox, Field, Input, Select } from './ui'
+import { Button, ErrorBox, Field, Input, Select, cx } from './ui'
 
 const emptyInput = (type: TransactionType): TransactionInput => ({
   date: today(),
@@ -19,6 +20,7 @@ const emptyInput = (type: TransactionType): TransactionInput => ({
   party: null,
   reference: null,
   description: null,
+  channel: null,
 })
 
 const fromTransaction = (t: Transaction): TransactionInput => ({
@@ -34,6 +36,7 @@ const fromTransaction = (t: Transaction): TransactionInput => ({
   party: t.party,
   reference: t.reference,
   description: t.description,
+  channel: t.channel,
 })
 
 const num = (v: string) => (v === '' ? null : Number(v))
@@ -78,12 +81,18 @@ export function TransactionForm({
     [accounts, form.businessUnitId],
   )
 
+  // Satu akaun bagi setiap perniagaan: akaun dipilih sendiri bila perniagaan dipilih
+  const businessAccount = accountForBusiness(accounts, form.businessUnitId)
+  const autoAccount = cfg.fields.business !== 'hidden' && cfg.fields.toAccount === 'hidden' && !!businessAccount
+  const effectiveAccountId = autoAccount ? businessAccount!.id : form.accountId
+
   const validate = () => {
     const e: Record<string, string> = {}
     const amount = Number(amountText.replace(/,/g, ''))
     if (!amount || amount <= 0) e.amount = 'Masukkan jumlah.'
     if (!form.date) e.date = 'Pilih tarikh.'
-    if (!form.accountId) e.accountId = 'Pilih akaun.'
+    if (!effectiveAccountId) e.accountId = 'Pilih akaun.'
+    if (cfg.fields.channel === 'required' && !form.channel) e.channel = 'Pilih Tunai atau Bank.'
     if (cfg.fields.business === 'required' && !form.businessUnitId) e.businessUnitId = 'Pilih perniagaan.'
     if (cfg.fields.toBusiness === 'required') {
       if (!form.toBusinessUnitId) e.toBusinessUnitId = 'Pilih perniagaan.'
@@ -91,7 +100,7 @@ export function TransactionForm({
     }
     if (cfg.fields.toAccount === 'required') {
       if (!form.toAccountId) e.toAccountId = 'Pilih akaun.'
-      else if (cfg.type === 'Transfer' && form.toAccountId === form.accountId) e.toAccountId = 'Mesti berbeza dengan akaun asal.'
+      else if (cfg.type === 'Transfer' && form.toAccountId === effectiveAccountId) e.toAccountId = 'Mesti berbeza dengan akaun asal.'
     }
     if (cfg.fields.category === 'required' && !form.categoryId) e.categoryId = 'Pilih kategori.'
     if (cfg.fields.familyMember === 'required' && !form.familyMemberId) e.familyMemberId = 'Pilih ahli keluarga.'
@@ -105,10 +114,17 @@ export function TransactionForm({
     const { ok, amount } = validate()
     if (!ok) return
     try {
-      const saved = await save.mutateAsync({ id: existing?.id, input: { ...form, type: cfg.type, amount } })
+      const input = {
+        ...form,
+        type: cfg.type,
+        amount,
+        accountId: effectiveAccountId,
+        channel: cfg.fields.channel === 'hidden' ? null : form.channel,
+      }
+      const saved = await save.mutateAsync({ id: existing?.id, input })
       onSaved(saved, again)
       if (again) {
-        setForm((f) => ({ ...emptyInput(cfg.type), date: f.date, businessUnitId: f.businessUnitId, accountId: f.accountId }))
+        setForm((f) => ({ ...emptyInput(cfg.type), date: f.date, businessUnitId: f.businessUnitId, accountId: f.accountId, channel: f.channel }))
         setAmountText('')
       }
     } catch (err) {
@@ -153,6 +169,26 @@ export function TransactionForm({
         </Field>
       )}
 
+      {cfg.fields.channel !== 'hidden' && (
+        <Field label="Tunai / Bank" required={cfg.fields.channel === 'required'} error={errors.channel}>
+          <div className="grid grid-cols-2 gap-2">
+            {channels.map((c) => (
+              <button
+                type="button"
+                key={c.value}
+                onClick={() => set('channel', form.channel === c.value && cfg.fields.channel === 'optional' ? null : c.value)}
+                className={cx(
+                  'min-h-[44px] rounded-xl border px-3 py-2 text-sm font-semibold transition',
+                  form.channel === c.value ? 'border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-100' : 'border-line bg-white text-ink hover:bg-gray-50',
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+
       {cfg.fields.toBusiness !== 'hidden' && (
         <Field label={cfg.labels.toBusiness ?? 'Ke perniagaan'} required error={errors.toBusinessUnitId}>
           <Select value={form.toBusinessUnitId ?? ''} onChange={(e) => set('toBusinessUnitId', num(e.target.value))}>
@@ -187,14 +223,16 @@ export function TransactionForm({
       )}
 
       <div className={cfg.fields.toAccount !== 'hidden' ? 'grid gap-4 sm:grid-cols-2' : ''}>
-        <Field label={cfg.labels.account} required error={errors.accountId}>
-          <Select value={form.accountId || ''} onChange={(e) => set('accountId', Number(e.target.value))}>
-            <option value="">— Pilih akaun —</option>
-            {sortedAccounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </Select>
-        </Field>
+        {!autoAccount && (
+          <Field label={cfg.labels.account} required error={errors.accountId}>
+            <Select value={form.accountId || ''} onChange={(e) => set('accountId', Number(e.target.value))}>
+              <option value="">— Pilih akaun —</option>
+              {sortedAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </Select>
+          </Field>
+        )}
         {cfg.fields.toAccount !== 'hidden' && (
           <Field label={cfg.labels.toAccount ?? 'Ke akaun'} required error={errors.toAccountId}>
             <Select value={form.toAccountId ?? ''} onChange={(e) => set('toAccountId', num(e.target.value))}>

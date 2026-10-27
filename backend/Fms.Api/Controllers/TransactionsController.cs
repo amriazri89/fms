@@ -107,13 +107,13 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
     {
         var rows = await Filter(q).OrderBy(t => t.Date).ThenBy(t => t.Id).Select(TransactionMapping.ToDto).ToListAsync();
         var sb = new StringBuilder();
-        sb.AppendLine("Tarikh,Jenis,Perniagaan,Ke Perniagaan,Akaun,Ke Akaun,Kategori,Ahli Keluarga,Pelanggan/Pembekal,Rujukan,Catatan,Jumlah,Direkod Oleh");
+        sb.AppendLine("Tarikh,Jenis,Perniagaan,Ke Perniagaan,Akaun,Ke Akaun,Tunai/Bank,Kategori,Ahli Keluarga,Pelanggan/Pembekal,Rujukan,Catatan,Jumlah,Direkod Oleh");
         foreach (var r in rows)
         {
             sb.AppendJoin(',', new[]
             {
                 r.Date.ToString("yyyy-MM-dd"), r.Type.ToString(), Csv(r.BusinessUnitName), Csv(r.ToBusinessUnitName),
-                Csv(r.AccountName), Csv(r.ToAccountName), Csv(r.CategoryName), Csv(r.FamilyMemberName),
+                Csv(r.AccountName), Csv(r.ToAccountName), ChannelLabel(r.Channel), Csv(r.CategoryName), Csv(r.FamilyMemberName),
                 Csv(r.Party), Csv(r.Reference), Csv(r.Description),
                 r.Amount.ToString("0.00", CultureInfo.InvariantCulture), Csv(r.CreatedBy)
             });
@@ -171,6 +171,7 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         if (q.BusinessUnitId is int bu) query = query.Where(t => t.BusinessUnitId == bu || t.ToBusinessUnitId == bu);
         if (q.AccountId is int acc) query = query.Where(t => t.AccountId == acc || t.ToAccountId == acc);
         if (q.CategoryId is int cat) query = query.Where(t => t.CategoryId == cat);
+        if (q.Channel is MoneyChannel ch) query = query.Where(t => t.Channel == ch);
         if (!string.IsNullOrWhiteSpace(q.Q))
         {
             var s = q.Q.Trim();
@@ -199,6 +200,7 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         t.ToAccountId = rule.ToAccount != FieldRule.Hidden ? i.ToAccountId : null;
         t.CategoryId = rule.Category != FieldRule.Hidden ? i.CategoryId : null;
         t.FamilyMemberId = rule.FamilyMember != FieldRule.Hidden ? i.FamilyMemberId : null;
+        t.Channel = rule.Channel != FieldRule.Hidden ? i.Channel : null;
     }
 
     private async Task<Dictionary<string, string[]>> ValidateAsync(TransactionInput i)
@@ -215,8 +217,18 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         if (i.Amount <= 0) Add(nameof(i.Amount), "Jumlah mesti lebih daripada 0.");
         if (i.Date == default) Add(nameof(i.Date), "Tarikh diperlukan.");
 
-        if (!await db.Accounts.AnyAsync(a => a.Id == i.AccountId && a.IsActive))
+        var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == i.AccountId && a.IsActive);
+        if (account is null)
             Add(nameof(i.AccountId), "Sila pilih akaun.");
+        // Akaun milik satu perniagaan hanya untuk rekod perniagaan itu (pindahan & pinjaman dalaman dikecualikan)
+        else if (account.BusinessUnitId is int accountUnit && i.BusinessUnitId is int recordUnit && accountUnit != recordUnit &&
+                 i.Type is not (TransactionType.Transfer or TransactionType.InternalLoan))
+            Add(nameof(i.AccountId), "Akaun ini milik perniagaan lain.");
+
+        if (rule.Channel == FieldRule.Required && (i.Channel is null || !Enum.IsDefined(i.Channel.Value)))
+            Add(nameof(i.Channel), "Pilih Tunai atau Bank.");
+        else if (i.Channel is MoneyChannel ch && !Enum.IsDefined(ch))
+            Add(nameof(i.Channel), "Pilih Tunai atau Bank.");
 
         if (rule.Business == FieldRule.Required && i.BusinessUnitId is null)
             Add(nameof(i.BusinessUnitId), "Sila pilih perniagaan.");
@@ -257,6 +269,13 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
     }
 
     private static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private static string ChannelLabel(MoneyChannel? c) => c switch
+    {
+        MoneyChannel.Cash => "Tunai",
+        MoneyChannel.Bank => "Bank",
+        _ => "",
+    };
 
     private static string Csv(string? s)
     {
