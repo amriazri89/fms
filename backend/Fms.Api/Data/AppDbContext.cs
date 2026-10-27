@@ -47,6 +47,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Name).HasMaxLength(100).IsRequired();
             e.Property(x => x.Color).HasMaxLength(20);
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.LegalName).HasMaxLength(150);
             e.Property(x => x.RegistrationNo).HasMaxLength(50);
             e.Property(x => x.Address).HasMaxLength(300);

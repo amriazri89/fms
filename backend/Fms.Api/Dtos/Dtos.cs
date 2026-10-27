@@ -15,15 +15,17 @@ public record ResetPasswordRequest([Required, MinLength(8)] string NewPassword);
 
 // ---------- Master data ----------
 public record BusinessUnitDto(int Id, string Name, string? Description, string? Color, int SortOrder, bool IsActive,
-    string? LegalName, string? RegistrationNo, string? Address, string? Phone, string? Email, string? PaymentInfo, string? DocumentFooter);
+    string? LegalName, string? RegistrationNo, string? Address, string? Phone, string? Email, string? PaymentInfo, string? DocumentFooter,
+    UnitKind Kind);
 public record BusinessUnitInput([Required, MaxLength(100)] string Name, string? Description, string? Color, int SortOrder, bool IsActive = true,
     [MaxLength(150)] string? LegalName = null, [MaxLength(50)] string? RegistrationNo = null, [MaxLength(300)] string? Address = null,
     [MaxLength(50)] string? Phone = null, [MaxLength(100)] string? Email = null, [MaxLength(300)] string? PaymentInfo = null,
-    [MaxLength(300)] string? DocumentFooter = null);
+    [MaxLength(300)] string? DocumentFooter = null, UnitKind Kind = UnitKind.Business);
 
 public record AccountDto(int Id, string Name, AccountType Type, decimal OpeningBalance, decimal OpeningCash, decimal OpeningBank,
     int? BusinessUnitId, int SortOrder, bool IsActive);
-public record AccountInput([Required, MaxLength(100)] string Name, AccountType Type, decimal OpeningCash, decimal OpeningBank,
+/// <summary>Nama tidak diambil dari input — ia ikut perniagaan / servis (Account.NameFor).</summary>
+public record AccountInput(string? Name, AccountType Type, decimal OpeningCash, decimal OpeningBank,
     int? BusinessUnitId, int SortOrder, bool IsActive = true);
 
 public record CategoryDto(int Id, string Name, CategoryType Type, int? BusinessUnitId, int SortOrder, bool IsActive);

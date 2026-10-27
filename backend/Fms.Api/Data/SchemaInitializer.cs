@@ -44,6 +44,8 @@ public static class SchemaInitializer
             "UPDATE `Transactions` t JOIN `Accounts` a ON a.`Id` = t.`ToAccountId` SET t.`ToChannel` = a.`Type` WHERE t.`ToChannel` IS NULL;"),
         // Baki awal dipecah Tunai / Bank. Akaun lama: semua baki awal ikut jenis akaun.
         ("Accounts", "OpeningCash", "DECIMAL(18,2) NOT NULL DEFAULT 0", null),
+        // Perniagaan atau servis
+        ("BusinessUnits", "Kind", "VARCHAR(20) NOT NULL DEFAULT 'Business'", null),
         ("Accounts", "OpeningBank", "DECIMAL(18,2) NOT NULL DEFAULT 0",
             "UPDATE `Accounts` SET `OpeningCash` = IF(`Type` = 'Cash', `OpeningBalance`, 0), `OpeningBank` = IF(`Type` = 'Bank', `OpeningBalance`, 0);"),
     ];

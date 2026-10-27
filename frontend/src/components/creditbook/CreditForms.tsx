@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
-import { useCreditBookMutations } from '../../api/creditBookHooks'
+import { useCreditBook, useCreditBookMutations } from '../../api/creditBookHooks'
 import { useAccounts, useBusinessUnits, useCategories } from '../../api/hooks'
 import { useCustomers } from '../../api/salesHooks'
 import type { CreditLedger, PaymentMethod, Receipt } from '../../api/types'
@@ -10,6 +10,22 @@ import { formatRM, today } from '../../lib/format'
 import { CustomerFormModal } from '../sales/CustomerFormModal'
 import { Button, ErrorBox, Field, Input, Select, cx } from '../ui'
 import { accountForBusiness } from '../../config/channels'
+
+const LAST_UNIT_KEY = 'fms.creditBook.lastUnit'
+const readLastUnit = () => {
+  try {
+    return Number(localStorage.getItem(LAST_UNIT_KEY)) || null
+  } catch {
+    return null
+  }
+}
+const saveLastUnit = (id: number) => {
+  try {
+    localStorage.setItem(LAST_UNIT_KEY, String(id))
+  } catch {
+    /* storage tidak tersedia */
+  }
+}
 
 const fieldErrors = (ex: unknown) =>
   ex instanceof ApiError ? Object.fromEntries(Object.entries(ex.fieldErrors).map(([k, v]) => [k, v[0]])) : {}
@@ -35,6 +51,7 @@ export function CreditEntryForm({
 
   const [customerId, setCustomerId] = useState<number | ''>(fixedCustomerId ?? '')
   const [businessUnitId, setBusinessUnitId] = useState<number | ''>(fixedBusinessUnitId ?? '')
+  const { data: book } = useCreditBook({ includeSettled: true })
   const [date, setDate] = useState(today())
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
@@ -42,8 +59,21 @@ export function CreditEntryForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<unknown>(null)
 
-  // Satu perniagaan sahaja → pilih terus
-  const effectiveUnitId = businessUnitId || (units.length === 1 ? units[0].id : '')
+  // Perniagaan lalai (tidak di-hardcode): pilihan terakhir pengguna, atau perniagaan yang paling banyak
+  // digunakan dalam buku hutang (biasanya Kedai Runcit), atau satu-satunya perniagaan. Masih boleh ditukar.
+  const defaultUnitId = useMemo(() => {
+    const active = new Set(units.map((u) => u.id))
+    const last = readLastUnit()
+    if (last && active.has(last)) return last
+    const counts = new Map<number, number>()
+    for (const r of book?.rows ?? []) if (active.has(r.businessUnitId)) counts.set(r.businessUnitId, (counts.get(r.businessUnitId) ?? 0) + 1)
+    const mostUsed = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+    return mostUsed ?? (units.length === 1 ? units[0].id : '')
+  }, [units, book])
+  useEffect(() => {
+    if (!fixedBusinessUnitId && businessUnitId === '' && defaultUnitId) setBusinessUnitId(defaultUnitId)
+  }, [fixedBusinessUnitId, businessUnitId, defaultUnitId])
+  const effectiveUnitId = businessUnitId || defaultUnitId
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -65,6 +95,7 @@ export function CreditEntryForm({
         description: description.trim(),
         amount: amt,
       })
+      saveLastUnit(Number(effectiveUnitId))
       onSaved(ledger)
     } catch (ex) {
       setErrors(fieldErrors(ex))

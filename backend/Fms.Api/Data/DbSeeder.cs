@@ -92,7 +92,7 @@ public static class DbSeeder
         // Satu akaun bagi setiap perniagaan (baki satu jumlah). Tunai / Bank ialah label pada setiap rekod.
         var accounts = options.SeedDemoData
             ? DemoAccountSeeds.Select((a, i) => new Account { Name = a.Name, Type = a.Type, SortOrder = i + 1 }).ToList()
-            : units.Select((u, i) => new Account { Name = u.Name, Type = AccountType.Cash, BusinessUnitId = u.Id, SortOrder = i + 1 }).ToList();
+            : units.Select((u, i) => new Account { Name = Account.NameFor(u), Type = AccountType.Cash, BusinessUnitId = u.Id, SortOrder = i + 1 }).ToList();
         db.Accounts.AddRange(accounts);
 
         var members = new List<FamilyMember>

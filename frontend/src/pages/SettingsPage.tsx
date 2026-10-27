@@ -4,11 +4,12 @@ import type { Account, BusinessUnit, Category, FamilyMember, User, UserRole } fr
 import { roleLabels, useAuth } from '../auth/AuthContext'
 import { MasterTable } from '../components/MasterTable'
 import { Badge, Button, Card, ErrorBox, Field, Input, Modal, Money, PageHeader, Segmented, Select, Spinner } from '../components/ui'
+import { accountNameFor, unitKindLabel, unitKinds } from '../config/units'
 import { formatDateTime, formatRM } from '../lib/format'
 
 type Tab = 'business' | 'accounts' | 'categories' | 'members' | 'users' | 'audit'
 const tabs: { key: Tab; label: string }[] = [
-  { key: 'business', label: 'Perniagaan' },
+  { key: 'business', label: 'Perniagaan & Servis' },
   { key: 'accounts', label: 'Akaun' },
   { key: 'categories', label: 'Kategori' },
   { key: 'members', label: 'Ahli keluarga' },
@@ -16,25 +17,25 @@ const tabs: { key: Tab; label: string }[] = [
   { key: 'audit', label: 'Log perubahan' },
 ]
 
-const accountTypeLabel = { Cash: 'Tunai', Bank: 'Bank' } as const
 const categoryTypeLabel = { Income: 'Duit masuk', Expense: 'Duit keluar' } as const
 
 function BusinessTab() {
   const { data, isLoading } = useBusinessUnits(true)
   return (
     <MasterTable<BusinessUnit>
-      title="Perniagaan"
-      description="Setiap rekod duit masuk dan keluar mesti dilabel dengan salah satu perniagaan ini."
+      title="Perniagaan & Servis"
+      description="Setiap rekod duit masuk dan keluar dilabel dengan salah satu perniagaan / servis ini. Perniagaan / servis baru terus dapat akaun sendiri (Tunai + Bank)."
       resource="business-units"
       cacheKey="business-units"
       rows={data}
       loading={isLoading}
       emptyRow={{
-        name: '', description: null, color: '#1F6F4A', sortOrder: (data?.length ?? 0) + 1, isActive: true,
+        name: '', kind: 'Business', description: null, color: '#1F6F4A', sortOrder: (data?.length ?? 0) + 1, isActive: true,
         legalName: null, registrationNo: null, address: null, phone: null, email: null, paymentInfo: null, documentFooter: null,
       }}
       fields={[
         { key: 'name', label: 'Nama', kind: 'text', required: true },
+        { key: 'kind', label: 'Jenis', kind: 'select', required: true, options: unitKinds.map((k) => ({ value: k.value, label: k.label })) },
         { key: 'description', label: 'Keterangan', kind: 'text' },
         { key: 'color', label: 'Warna', kind: 'color', hint: 'Juga digunakan sebagai warna dokumen yang dicetak.' },
         { key: 'sortOrder', label: 'Susunan', kind: 'number' },
@@ -49,6 +50,7 @@ function BusinessTab() {
       ]}
       columns={[
         { label: 'Nama', render: (r) => (<span className="font-semibold"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full" style={{ background: r.color ?? '#999' }} />{r.name}</span>) },
+        { label: 'Jenis', render: (r) => <Badge tone={r.kind === 'Service' ? 'gold' : 'neutral'}>{unitKindLabel(r.kind)}</Badge> },
         { label: 'Keterangan', render: (r) => <span className="text-muted">{r.description}</span>, className: 'hidden sm:table-cell' },
       ]}
     />
@@ -61,24 +63,36 @@ function AccountsTab() {
   return (
     <MasterTable<Account>
       title="Akaun"
-      description="Satu akaun bagi setiap perniagaan — baki satu jumlah. Tunai atau Bank dipilih pada setiap rekod Duit Masuk / Keluar. Baki awal ialah baki pada hari mula guna sistem."
+      description="Satu akaun bagi setiap perniagaan / servis. Nama akaun ikut nama perniagaan / servis — tukar nama di tab Perniagaan & Servis. Baki awal ialah baki pada hari mula guna sistem."
       resource="accounts"
       cacheKey="accounts"
       rows={data}
       loading={isLoading}
       emptyRow={{ name: '', type: 'Bank', openingBalance: 0, openingCash: 0, openingBank: 0, businessUnitId: null, sortOrder: (data?.length ?? 0) + 1, isActive: true }}
       fields={[
-        { key: 'name', label: 'Nama akaun', kind: 'text', required: true },
-        { key: 'type', label: 'Jenis', kind: 'select', required: true, options: [{ value: 'Cash', label: 'Tunai' }, { value: 'Bank', label: 'Bank' }] },
+        {
+          key: 'businessUnitId',
+          label: 'Untuk perniagaan / servis',
+          kind: 'select',
+          required: true,
+          allowEmpty: '— Pilih —',
+          hint: 'Nama akaun dijana sendiri, contoh "Akaun Kedai Runcit".',
+          options: units.map((u) => ({ value: u.id, label: `${accountNameFor(u)} (${unitKindLabel(u.kind)})` })),
+        },
         { key: 'openingCash', label: 'Baki awal tunai (RM)', kind: 'number' },
         { key: 'openingBank', label: 'Baki awal bank (RM)', kind: 'number' },
-        { key: 'businessUnitId', label: 'Milik perniagaan', kind: 'select', allowEmpty: 'Dikongsi semua', options: units.map((u) => ({ value: u.id, label: u.name })) },
         { key: 'sortOrder', label: 'Susunan', kind: 'number' },
         { key: 'isActive', label: 'Aktif', kind: 'checkbox' },
       ]}
       columns={[
         { label: 'Nama', render: (r) => <span className="font-semibold">{r.name}</span> },
-        { label: 'Milik perniagaan', render: (r) => (r.businessUnitId ? units.find((u) => u.id === r.businessUnitId)?.name ?? '?' : `Dikongsi · ${accountTypeLabel[r.type]}`) },
+        {
+          label: 'Untuk',
+          render: (r) => {
+            const u = units.find((x) => x.id === r.businessUnitId)
+            return u ? `${u.name} · ${unitKindLabel(u.kind)}` : <span className="text-gold-600">Belum dipautkan — klik untuk pilih</span>
+          },
+        },
         {
           label: 'Baki awal',
           render: (r) => (

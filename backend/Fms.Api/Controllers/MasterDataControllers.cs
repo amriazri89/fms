@@ -23,20 +23,41 @@ public class BusinessUnitsController(AppDbContext db, AuditService audit) : Cont
             .Where(x => includeInactive || x.IsActive)
             .OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
             .Select(x => new BusinessUnitDto(x.Id, x.Name, x.Description, x.Color, x.SortOrder, x.IsActive,
-                x.LegalName, x.RegistrationNo, x.Address, x.Phone, x.Email, x.PaymentInfo, x.DocumentFooter))
+                x.LegalName, x.RegistrationNo, x.Address, x.Phone, x.Email, x.PaymentInfo, x.DocumentFooter, x.Kind))
             .ToListAsync();
 
     [HttpPost, Authorize(Policy = Policies.Manager)]
     public async Task<ActionResult<BusinessUnitDto>> Create(BusinessUnitInput input)
     {
         if (await db.BusinessUnits.AnyAsync(x => x.Name == input.Name.Trim()))
-            return Conflict(new { message = "Nama perniagaan sudah wujud." });
+            return Conflict(new { message = "Nama perniagaan / servis sudah wujud." });
+        if (!Enum.IsDefined(input.Kind))
+            return BadRequest(new { message = "Pilih jenis: Perniagaan atau Servis." });
         var e = new BusinessUnit();
         Apply(e, input);
+
+        // Setiap perniagaan / servis ada satu akaun (Tunai + Bank) — dicipta sendiri.
+        // Akaun lama yang belum dipautkan tetapi sama nama dipautkan, bukan dicipta baru.
+        var accountName = Account.NameFor(e);
+        var account = await db.Accounts.FirstOrDefaultAsync(a => a.Name == accountName);
+        if (account is not null && account.BusinessUnitId is not null)
+            return Conflict(new { message = $"Nama akaun '{accountName}' sudah digunakan. Pilih nama lain." });
+
+        await using var dbTx = await db.Database.BeginTransactionAsync();
         db.BusinessUnits.Add(e);
         await db.SaveChangesAsync();
+        if (account is null)
+        {
+            var nextSort = await db.Accounts.AnyAsync() ? await db.Accounts.MaxAsync(a => a.SortOrder) + 1 : 1;
+            db.Accounts.Add(new Account { Name = accountName, Type = AccountType.Cash, BusinessUnitId = e.Id, SortOrder = nextSort, IsActive = e.IsActive });
+        }
+        else
+        {
+            account.BusinessUnitId = e.Id;
+        }
         audit.Log(AuditActions.Create, "BusinessUnit", e.Id, newValue: input);
         await db.SaveChangesAsync();
+        await dbTx.CommitAsync();
         return ToDto(e);
     }
 
@@ -46,9 +67,19 @@ public class BusinessUnitsController(AppDbContext db, AuditService audit) : Cont
         var e = await db.BusinessUnits.FindAsync(id);
         if (e is null) return NotFound();
         if (await db.BusinessUnits.AnyAsync(x => x.Id != id && x.Name == input.Name.Trim()))
-            return Conflict(new { message = "Nama perniagaan sudah wujud." });
+            return Conflict(new { message = "Nama perniagaan / servis sudah wujud." });
+        if (!Enum.IsDefined(input.Kind))
+            return BadRequest(new { message = "Pilih jenis: Perniagaan atau Servis." });
         var old = ToDto(e);
         Apply(e, input);
+
+        // Nama akaun ikut nama perniagaan / servis
+        var accountName = Account.NameFor(e);
+        if (await db.Accounts.AnyAsync(a => a.Name == accountName && a.BusinessUnitId != id))
+            return Conflict(new { message = $"Nama akaun '{accountName}' sudah digunakan oleh akaun lain." });
+        foreach (var a in await db.Accounts.Where(a => a.BusinessUnitId == id).ToListAsync())
+            a.Name = accountName;
+
         audit.Log(AuditActions.Update, "BusinessUnit", id, old, input);
         await db.SaveChangesAsync();
         return ToDto(e);
@@ -74,6 +105,7 @@ public class BusinessUnitsController(AppDbContext db, AuditService audit) : Cont
     private static void Apply(BusinessUnit e, BusinessUnitInput i)
     {
         e.Name = i.Name.Trim(); e.Description = i.Description; e.Color = i.Color; e.SortOrder = i.SortOrder; e.IsActive = i.IsActive;
+        e.Kind = i.Kind;
         e.LegalName = Clean(i.LegalName); e.RegistrationNo = Clean(i.RegistrationNo); e.Address = Clean(i.Address);
         e.Phone = Clean(i.Phone); e.Email = Clean(i.Email); e.PaymentInfo = Clean(i.PaymentInfo); e.DocumentFooter = Clean(i.DocumentFooter);
     }
@@ -81,7 +113,7 @@ public class BusinessUnitsController(AppDbContext db, AuditService audit) : Cont
     private static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     private static BusinessUnitDto ToDto(BusinessUnit x) => new(x.Id, x.Name, x.Description, x.Color, x.SortOrder, x.IsActive,
-        x.LegalName, x.RegistrationNo, x.Address, x.Phone, x.Email, x.PaymentInfo, x.DocumentFooter);
+        x.LegalName, x.RegistrationNo, x.Address, x.Phone, x.Email, x.PaymentInfo, x.DocumentFooter, x.Kind);
 }
 
 [ApiController]
@@ -103,10 +135,9 @@ public class AccountsController(AppDbContext db, AuditService audit, ReportServi
     [HttpPost, Authorize(Policy = Policies.Manager)]
     public async Task<ActionResult<AccountDto>> Create(AccountInput input)
     {
-        if (await db.Accounts.AnyAsync(x => x.Name == input.Name.Trim()))
-            return Conflict(new { message = "Nama akaun sudah wujud." });
         var e = new Account();
-        Apply(e, input);
+        if (await CheckAsync(null, input) is ActionResult problem) return problem;
+        await ApplyAsync(e, input);
         db.Accounts.Add(e);
         await db.SaveChangesAsync();
         audit.Log(AuditActions.Create, "Account", e.Id, newValue: input);
@@ -119,10 +150,9 @@ public class AccountsController(AppDbContext db, AuditService audit, ReportServi
     {
         var e = await db.Accounts.FindAsync(id);
         if (e is null) return NotFound();
-        if (await db.Accounts.AnyAsync(x => x.Id != id && x.Name == input.Name.Trim()))
-            return Conflict(new { message = "Nama akaun sudah wujud." });
+        if (await CheckAsync(id, input) is ActionResult problem) return problem;
         var old = ToDto(e);
-        Apply(e, input);
+        await ApplyAsync(e, input);
         audit.Log(AuditActions.Update, "Account", id, old, input);
         await db.SaveChangesAsync();
         return ToDto(e);
@@ -141,9 +171,25 @@ public class AccountsController(AppDbContext db, AuditService audit, ReportServi
         return NoContent();
     }
 
-    private static void Apply(Account e, AccountInput i)
+    /// <summary>Akaun mesti untuk satu perniagaan / servis, dan setiap satu hanya ada satu akaun.</summary>
+    private async Task<ActionResult?> CheckAsync(int? id, AccountInput i)
     {
-        e.Name = i.Name.Trim(); e.Type = i.Type;
+        var unit = i.BusinessUnitId is int bu ? await db.BusinessUnits.FindAsync(bu) : null;
+        if (unit is null)
+            return BadRequest(new { message = "Pilih perniagaan / servis untuk akaun ini." });
+        if (await db.Accounts.AnyAsync(a => a.Id != id && a.BusinessUnitId == unit.Id))
+            return Conflict(new { message = $"{unit.Name} sudah ada akaun. Satu perniagaan / servis hanya satu akaun (Tunai + Bank)." });
+        var name = Account.NameFor(unit);
+        if (await db.Accounts.AnyAsync(a => a.Id != id && a.Name == name))
+            return Conflict(new { message = $"Nama akaun '{name}' sudah digunakan oleh akaun lain. Ubah atau padam akaun itu dahulu." });
+        return null;
+    }
+
+    private async Task ApplyAsync(Account e, AccountInput i)
+    {
+        var unit = await db.BusinessUnits.FindAsync(i.BusinessUnitId!.Value);
+        e.Name = Account.NameFor(unit!);
+        e.Type = Enum.IsDefined(i.Type) ? i.Type : AccountType.Cash;
         // Baki awal Tunai + Bank. Jumlah disimpan juga kerana semua laporan baki guna OpeningBalance.
         e.OpeningCash = Math.Round(i.OpeningCash, 2);
         e.OpeningBank = Math.Round(i.OpeningBank, 2);

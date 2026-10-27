@@ -21,6 +21,9 @@ public class BusinessUnit
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Perniagaan atau servis. Kedua-duanya boleh direkod dan ada untung rugi sendiri.</summary>
+    public UnitKind Kind { get; set; } = UnitKind.Business;
+
     // Maklumat yang dicetak pada sebut harga / invois / resit
     public string? LegalName { get; set; }
     public string? RegistrationNo { get; set; }
@@ -32,9 +35,15 @@ public class BusinessUnit
     public string? DocumentFooter { get; set; }
 }
 
-/// <summary>Tempat simpan duit: tunai atau akaun bank.</summary>
+/// <summary>
+/// Akaun duit bagi satu perniagaan / servis. Baki dipecah Tunai + Bank.
+/// Nama tidak ditaip: ia ikut nama perniagaan / servis (lihat NameFor).
+/// </summary>
 public class Account
 {
+    /// <summary>Satu-satunya peraturan nama akaun.</summary>
+    public static string NameFor(BusinessUnit unit) => $"Akaun {unit.Name}";
+
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public AccountType Type { get; set; }

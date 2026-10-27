@@ -2,6 +2,8 @@
 
 export type UserRole = 'Manager' | 'Clerk'
 export type AccountType = 'Cash' | 'Bank'
+/** Perniagaan atau servis (Domain/Enums.cs UnitKind) */
+export type UnitKind = 'Business' | 'Service'
 /** Label Tunai / Bank pada rekod duit (Domain/Enums.cs MoneyChannel) */
 export type MoneyChannel = 'Cash' | 'Bank'
 export type CategoryType = 'Income' | 'Expense'
@@ -32,6 +34,7 @@ export interface LoginResponse {
 export interface BusinessUnit {
   id: number
   name: string
+  kind: UnitKind
   description: string | null
   color: string | null
   sortOrder: number

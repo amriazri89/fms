@@ -16,6 +16,13 @@ public enum AccountType
     Bank = 2
 }
 
+/// <summary>Jenis unit: perniagaan (contoh Nenas, Kedai) atau servis (contoh Transport).</summary>
+public enum UnitKind
+{
+    Business = 1,
+    Service = 2
+}
+
 /// <summary>
 /// Label Tunai / Bank pada setiap rekod duit (untuk tapisan & laporan).
 /// Baki tetap dikira ikut akaun — satu akaun bagi setiap perniagaan.

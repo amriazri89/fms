@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `BusinessUnits` (
     `Color` VARCHAR(20) NULL,
     `SortOrder` INT NOT NULL,
     `IsActive` TINYINT(1) NOT NULL,
+    `Kind` VARCHAR(20) NOT NULL DEFAULT 'Business',  -- Business | Service
     `LegalName` VARCHAR(150) NULL,
     `RegistrationNo` VARCHAR(50) NULL,
     `Address` VARCHAR(300) NULL,
