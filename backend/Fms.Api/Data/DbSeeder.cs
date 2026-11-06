@@ -38,6 +38,35 @@ public static class DbSeeder
         ("RHB", AccountType.Bank),
     ];
 
+    /// <summary>
+    /// Agihan sawit: jika belum ada jenis caj, cipta "Upah potong sawit" dan "Transport sawit"
+    /// (kadar 0 — Pengurus tetapkan di Tetapan). Dijalankan setiap kali aplikasi bermula; tiada kesan jika sudah ada.
+    /// </summary>
+    public static async Task EnsurePalmChargeTypesAsync(AppDbContext db, ILogger logger)
+    {
+        if (!await db.Users.AnyAsync() || await db.PalmChargeTypes.AnyAsync()) return;
+
+        string[] names = ["Upah potong sawit", "Transport sawit"];
+        var nextSort = await db.Categories.AnyAsync() ? await db.Categories.MaxAsync(c => c.SortOrder) + 1 : 1;
+        var order = 1;
+        foreach (var name in names)
+        {
+            var cat = await db.Categories.FirstOrDefaultAsync(c => c.Name == name && c.Type == CategoryType.Income);
+            if (cat is null)
+            {
+                cat = new Category { Name = name, Type = CategoryType.Income, SortOrder = nextSort++ };
+                db.Categories.Add(cat);
+                await db.SaveChangesAsync();
+            }
+            db.PalmChargeTypes.Add(new PalmChargeType
+            {
+                Name = name.Replace(" sawit", ""), CategoryId = cat.Id, DefaultMethod = ChargeMethod.PerTonne, DefaultRate = 0, SortOrder = order++,
+            });
+        }
+        await db.SaveChangesAsync();
+        logger.LogInformation("Jenis caj sawit asas dicipta.");
+    }
+
     public static async Task SeedAsync(AppDbContext db, AppOptions options, DocumentOptions documents, ILogger logger)
     {
         if (await db.Users.AnyAsync()) return;
@@ -45,7 +74,7 @@ public static class DbSeeder
         if (string.IsNullOrWhiteSpace(options.ManagerPassword) || string.IsNullOrWhiteSpace(options.ClerkPassword))
             throw new InvalidOperationException("App:ManagerPassword dan App:ClerkPassword mesti diisi untuk seed pertama.");
 
-        // Dua pengguna sahaja: Pengurus (ayah) dan Kerani (anak)
+        // Dua pengguna sahaja: Pengurus dan Kerani (nama dari appsettings App:ManagerFullName / ClerkFullName)
         var admin = new User
         {
             Username = options.ManagerUsername.Trim().ToLowerInvariant(),

@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import { useAccounts, useAuditLogs, useBusinessUnits, useCategories, useFamilyMembers, useUserMutations, useUsers } from '../api/hooks'
-import type { Account, BusinessUnit, Category, FamilyMember, User, UserRole } from '../api/types'
+import { usePalmChargeTypes } from '../api/palmHooks'
+import type { Account, BusinessUnit, Category, FamilyMember, PalmChargeType, User, UserRole } from '../api/types'
 import { roleLabels, useAuth } from '../auth/AuthContext'
 import { MasterTable } from '../components/MasterTable'
 import { Badge, Button, Card, ErrorBox, Field, Input, Modal, Money, PageHeader, Segmented, Select, Spinner } from '../components/ui'
+import { chargeMethodUnit, chargeMethods } from '../config/palm'
 import { accountNameFor, unitKindLabel, unitKinds } from '../config/units'
 import { formatDateTime, formatRM } from '../lib/format'
 
-type Tab = 'business' | 'accounts' | 'categories' | 'members' | 'users' | 'audit'
+type Tab = 'business' | 'accounts' | 'categories' | 'palm' | 'members' | 'users' | 'audit'
 const tabs: { key: Tab; label: string }[] = [
   { key: 'business', label: 'Perniagaan & Servis' },
   { key: 'accounts', label: 'Akaun' },
   { key: 'categories', label: 'Kategori' },
+  { key: 'palm', label: 'Caj sawit' },
   { key: 'members', label: 'Ahli keluarga' },
   { key: 'users', label: 'Pengguna' },
   { key: 'audit', label: 'Log perubahan' },
@@ -108,6 +111,37 @@ function AccountsTab() {
   )
 }
 
+/** Caj yang ditolak daripada tiket sawit (upah potong, transport ...) = pendapatan. */
+function PalmChargesTab() {
+  const { data, isLoading } = usePalmChargeTypes(true)
+  const { data: categories = [] } = useCategories()
+  const income = categories.filter((c) => c.type === 'Income')
+  return (
+    <MasterTable<PalmChargeType>
+      title="Caj sawit"
+      description="Caj yang ditolak daripada setiap tiket sebelum dibayar kepada pemilik. Setiap caj direkod sebagai Duit Masuk dengan kategorinya. Kadar lalai boleh ditukar pada setiap tiket."
+      resource="palm/charge-types"
+      cacheKey="palm-charge-types"
+      rows={data}
+      loading={isLoading}
+      emptyRow={{ name: '', categoryId: income[0]?.id ?? 0, categoryName: '', defaultMethod: 'PerTonne', defaultRate: 0, sortOrder: (data?.length ?? 0) + 1, isActive: true }}
+      fields={[
+        { key: 'name', label: 'Nama', kind: 'text', required: true },
+        { key: 'categoryId', label: 'Kategori Duit Masuk', kind: 'select', required: true, options: income.map((c) => ({ value: c.id, label: c.name })) },
+        { key: 'defaultMethod', label: 'Cara kira lalai', kind: 'select', required: true, options: chargeMethods.map((m) => ({ value: m.value, label: m.label })) },
+        { key: 'defaultRate', label: 'Kadar lalai', kind: 'number', hint: 'RM per tan, RM tetap, atau % ikut cara kira.' },
+        { key: 'sortOrder', label: 'Susunan', kind: 'number' },
+        { key: 'isActive', label: 'Aktif', kind: 'checkbox' },
+      ]}
+      columns={[
+        { label: 'Nama', render: (r) => <span className="font-semibold">{r.name}</span> },
+        { label: 'Lalai', render: (r) => `${r.defaultRate} ${chargeMethodUnit(r.defaultMethod)}` },
+        { label: 'Kategori', render: (r) => <span className="text-muted">{r.categoryName}</span>, className: 'hidden sm:table-cell' },
+      ]}
+    />
+  )
+}
+
 function CategoriesTab() {
   const { data, isLoading } = useCategories(true)
   const { data: units = [] } = useBusinessUnits(true)
@@ -167,8 +201,8 @@ function MembersTab() {
 
 const roles: UserRole[] = ['Manager', 'Clerk']
 const roleHelp: Record<UserRole, string> = {
-  Manager: 'Ayah. Semua akses: tetapan, lulus tuntutan, padam rekod.',
-  Clerk: 'Anak. Semua kemasukan data harian, mohon tuntutan dan lihat laporan.',
+  Manager: 'Semua akses: tetapan, lulus tuntutan, padam rekod.',
+  Clerk: 'Semua kemasukan data harian, mohon tuntutan dan lihat laporan.',
 }
 
 function UsersTab() {
@@ -298,6 +332,7 @@ export default function SettingsPage() {
       {tab === 'business' && <BusinessTab />}
       {tab === 'accounts' && <AccountsTab />}
       {tab === 'categories' && <CategoriesTab />}
+      {tab === 'palm' && <PalmChargesTab />}
       {tab === 'members' && <MembersTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'audit' && <AuditTab />}

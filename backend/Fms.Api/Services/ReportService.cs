@@ -80,7 +80,9 @@ public class ReportService(AppDbContext db, IOptions<AppOptions> options)
         return new DashboardDto(
             period,
             new TotalsDto(income, expense, income - expense, withdrawals, capital, accountDtos.Sum(a => a.Balance),
-                accountDtos.Sum(a => a.Cash), accountDtos.Sum(a => a.Bank), accountDtos.Sum(a => a.Unlabelled)),
+                accountDtos.Sum(a => a.Cash), accountDtos.Sum(a => a.Bank), accountDtos.Sum(a => a.Unlabelled),
+                // Duit pemilik sawit yang masih dipegang (ada dalam baki akaun, tetapi bukan milik perniagaan)
+                all.Where(t => t.Type == TransactionType.PalmIn).Sum(t => t.Amount) - all.Where(t => t.Type == TransactionType.PalmPayout).Sum(t => t.Amount)),
             businesses,
             accountDtos,
             expenseByCategory,

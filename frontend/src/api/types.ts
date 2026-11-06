@@ -16,6 +16,8 @@ export type TransactionType =
   | 'InternalLoan'
   | 'LoanIn'
   | 'LoanRepayment'
+  | 'PalmIn'
+  | 'PalmPayout'
 
 export interface User {
   id: number
@@ -193,6 +195,8 @@ export interface Dashboard {
     totalCash: number
     totalBank: number
     totalUnlabelled: number
+    /** Duit pemilik sawit yang dipegang (termasuk dalam baki akaun) */
+    heldForPalmOwners: number
   }
   businesses: BusinessProfit[]
   accounts: AccountBalance[]
@@ -293,6 +297,8 @@ export interface DocumentSettings {
   payslipPrefix: string
   utilityBillPrefix: string
   claimPrefix: string
+  palmBatchPrefix: string
+  palmPayoutPrefix: string
   companyName: string
 }
 
@@ -1028,4 +1034,177 @@ export interface StaffSummary {
   activeEmployees: number
   employeesNotPaidThisMonth: number
   recentPendingClaims: Claim[]
+}
+
+// ---------- Agihan sawit (Dtos/PalmDtos.cs) ----------
+export type ChargeMethod = 'PerTonne' | 'Fixed' | 'Percent'
+export type PalmBatchStatus = 'Draft' | 'Posted' | 'Cancelled'
+
+export interface PalmLastCharge {
+  chargeTypeId: number
+  method: ChargeMethod
+  rate: number
+}
+
+export interface PalmOwner {
+  id: number
+  name: string
+  phone: string | null
+  icNumber: string | null
+  bankInfo: string | null
+  notes: string | null
+  isActive: boolean
+  /** Belum dibayar (bayaran kilang disahkan) */
+  unpaid: number
+  /** Kadar caj tiket terakhir pemilik ini */
+  lastCharges: PalmLastCharge[]
+}
+
+export interface PalmChargeType {
+  id: number
+  name: string
+  categoryId: number
+  categoryName: string
+  defaultMethod: ChargeMethod
+  defaultRate: number
+  sortOrder: number
+  isActive: boolean
+}
+
+export interface PalmChargeInput {
+  chargeTypeId: number
+  method: ChargeMethod
+  rate: number
+}
+
+export interface PalmTicketInput {
+  ownerId: number
+  ticketNo: string | null
+  date: string
+  weightKg: number
+  pricePerTonne: number | null
+  gross: number
+  charges: PalmChargeInput[]
+}
+
+export interface PalmBatchInput {
+  millName: string
+  date: string
+  amountReceived: number
+  businessUnitId: number
+  accountId: number
+  channel: MoneyChannel
+  reference: string | null
+  notes: string | null
+  tickets: PalmTicketInput[]
+}
+
+export interface PalmCharge extends PalmChargeInput {
+  name: string
+  amount: number
+}
+
+export interface PalmTicket {
+  id: number
+  ownerId: number
+  ownerName: string
+  ticketNo: string | null
+  date: string
+  weightKg: number
+  pricePerTonne: number | null
+  gross: number
+  net: number
+  charges: PalmCharge[]
+}
+
+export interface PalmPayout {
+  id: number
+  number: string
+  batchId: number
+  batchNumber: string
+  ownerId: number
+  ownerName: string
+  date: string
+  amount: number
+  accountId: number
+  accountName: string
+  method: PaymentMethod
+  reference: string | null
+  isVoided: boolean
+  voidReason: string | null
+  createdBy: string
+  createdAt: string
+}
+
+export interface PalmOwnerShare {
+  ownerId: number
+  ownerName: string
+  phone: string | null
+  bankInfo: string | null
+  ticketCount: number
+  weightKg: number
+  gross: number
+  charges: number
+  net: number
+  payout: PalmPayout | null
+}
+
+export interface PalmBatch {
+  id: number
+  number: string
+  millName: string
+  date: string
+  amountReceived: number
+  businessUnitId: number
+  businessUnitName: string
+  accountId: number
+  accountName: string
+  channel: MoneyChannel
+  reference: string | null
+  notes: string | null
+  status: PalmBatchStatus
+  cancelReason: string | null
+  totalGross: number
+  totalCharges: number
+  totalNet: number
+  totalWeightKg: number
+  /** Amaun diterima − jumlah tiket; mesti 0 untuk disahkan */
+  difference: number
+  paidToOwners: number
+  unpaidToOwners: number
+  chargeTotals: { chargeTypeId: number; name: string; amount: number }[]
+  tickets: PalmTicket[]
+  owners: PalmOwnerShare[]
+  createdBy: string
+  createdAt: string
+}
+
+export interface PalmBatchListItem {
+  id: number
+  number: string
+  millName: string
+  date: string
+  amountReceived: number
+  businessUnitName: string
+  status: PalmBatchStatus
+  ticketCount: number
+  ownerCount: number
+  ownersPaid: number
+  totalCharges: number
+  unpaidToOwners: number
+}
+
+export interface PalmSummary {
+  unpaidToOwners: number
+  ownersWaiting: number
+  batches: PalmBatchListItem[]
+}
+
+export interface PalmPayoutInput {
+  batchId: number
+  ownerId: number
+  date: string
+  accountId: number
+  method: PaymentMethod
+  reference: string | null
 }

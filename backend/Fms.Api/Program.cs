@@ -41,6 +41,7 @@ builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<StatementService>();
 builder.Services.AddScoped<CreditBookService>();
+builder.Services.AddScoped<PalmService>();
 
 // ---------- Auth ----------
 builder.Services
@@ -98,6 +99,7 @@ using (var scope = app.Services.CreateScope())
         scope.ServiceProvider.GetRequiredService<IOptions<AppOptions>>().Value,
         scope.ServiceProvider.GetRequiredService<IOptions<DocumentOptions>>().Value,
         logger);
+    await DbSeeder.EnsurePalmChargeTypesAsync(db, logger);
 }
 
 // ---------- Pipeline ----------

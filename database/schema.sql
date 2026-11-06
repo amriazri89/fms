@@ -563,3 +563,136 @@ CREATE TABLE IF NOT EXISTS `CreditSales` (
     CONSTRAINT `FK_CreditSales_BusinessUnits_BusinessUnitId` FOREIGN KEY (`BusinessUnitId`) REFERENCES `BusinessUnits` (`Id`) ON DELETE RESTRICT,
     CONSTRAINT `FK_CreditSales_Users_CreatedById`            FOREIGN KEY (`CreatedById`)    REFERENCES `Users` (`Id`)         ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Agihan sawit: kilang bayar satu jumlah untuk banyak tiket; setiap pemilik
+-- dibayar amaun tiketnya tolak caj (upah potong, transport = pendapatan Ajib).
+-- Duit pemilik = Transactions PalmIn / PalmPayout (bukan untung rugi).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `PalmOwners` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `Name` VARCHAR(150) NOT NULL,
+    `Phone` VARCHAR(30) NULL,
+    `IcNumber` VARCHAR(20) NULL,
+    `BankInfo` VARCHAR(150) NULL,
+    `Notes` VARCHAR(300) NULL,
+    `IsActive` TINYINT(1) NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`Id`),
+    UNIQUE KEY `IX_PalmOwners_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PalmChargeTypes` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `Name` VARCHAR(100) NOT NULL,
+    `CategoryId` INT NOT NULL,  -- kategori Duit Masuk
+    `DefaultMethod` VARCHAR(20) NOT NULL,  -- PerTonne | Fixed | Percent
+    `DefaultRate` DECIMAL(18,4) NOT NULL,
+    `SortOrder` INT NOT NULL,
+    `IsActive` TINYINT(1) NOT NULL,
+    PRIMARY KEY (`Id`),
+    UNIQUE KEY `IX_PalmChargeTypes_Name` (`Name`),
+    KEY `IX_PalmChargeTypes_CategoryId` (`CategoryId`),
+    CONSTRAINT `FK_PalmChargeTypes_Categories_CategoryId` FOREIGN KEY (`CategoryId`) REFERENCES `Categories` (`Id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PalmBatches` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `Number` VARCHAR(30) NOT NULL,
+    `MillName` VARCHAR(150) NOT NULL,
+    `Date` DATE NOT NULL,
+    `AmountReceived` DECIMAL(18,2) NOT NULL,
+    `BusinessUnitId` INT NOT NULL,
+    `AccountId` INT NOT NULL,
+    `Channel` VARCHAR(10) NOT NULL,  -- Cash | Bank
+    `Reference` VARCHAR(50) NULL,
+    `Notes` VARCHAR(500) NULL,
+    `Status` VARCHAR(20) NOT NULL,  -- Draft | Posted | Cancelled
+    `PostedAt` DATETIME(6) NULL,
+    `CancelReason` VARCHAR(300) NULL,
+    `CreatedById` INT NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL,
+    `UpdatedAt` DATETIME(6) NULL,
+    PRIMARY KEY (`Id`),
+    UNIQUE KEY `IX_PalmBatches_Number` (`Number`),
+    KEY `IX_PalmBatches_Date` (`Date`),
+    KEY `IX_PalmBatches_BusinessUnitId` (`BusinessUnitId`),
+    KEY `IX_PalmBatches_AccountId` (`AccountId`),
+    KEY `IX_PalmBatches_CreatedById` (`CreatedById`),
+    CONSTRAINT `FK_PalmBatches_BusinessUnits_BusinessUnitId` FOREIGN KEY (`BusinessUnitId`) REFERENCES `BusinessUnits` (`Id`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_PalmBatches_Accounts_AccountId`           FOREIGN KEY (`AccountId`)      REFERENCES `Accounts` (`Id`)      ON DELETE RESTRICT,
+    CONSTRAINT `FK_PalmBatches_Users_CreatedById`            FOREIGN KEY (`CreatedById`)    REFERENCES `Users` (`Id`)         ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PalmTickets` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `BatchId` INT NOT NULL,
+    `OwnerId` INT NOT NULL,
+    `TicketNo` VARCHAR(50) NULL,
+    `Date` DATE NOT NULL,
+    `WeightKg` DECIMAL(18,2) NOT NULL,
+    `PricePerTonne` DECIMAL(18,2) NULL,
+    `Gross` DECIMAL(18,2) NOT NULL,
+    `Net` DECIMAL(18,2) NOT NULL,
+    `SortOrder` INT NOT NULL,
+    PRIMARY KEY (`Id`),
+    KEY `IX_PalmTickets_BatchId` (`BatchId`),
+    KEY `IX_PalmTickets_OwnerId` (`OwnerId`),
+    CONSTRAINT `FK_PalmTickets_PalmBatches_BatchId` FOREIGN KEY (`BatchId`) REFERENCES `PalmBatches` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `FK_PalmTickets_PalmOwners_OwnerId`  FOREIGN KEY (`OwnerId`) REFERENCES `PalmOwners` (`Id`)  ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PalmTicketCharges` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `TicketId` INT NOT NULL,
+    `ChargeTypeId` INT NOT NULL,
+    `Method` VARCHAR(20) NOT NULL,  -- PerTonne | Fixed | Percent
+    `Rate` DECIMAL(18,4) NOT NULL,
+    `Amount` DECIMAL(18,2) NOT NULL,
+    PRIMARY KEY (`Id`),
+    KEY `IX_PalmTicketCharges_TicketId` (`TicketId`),
+    KEY `IX_PalmTicketCharges_ChargeTypeId` (`ChargeTypeId`),
+    CONSTRAINT `FK_PalmTicketCharges_PalmTickets_TicketId`         FOREIGN KEY (`TicketId`)     REFERENCES `PalmTickets` (`Id`)     ON DELETE CASCADE,
+    CONSTRAINT `FK_PalmTicketCharges_PalmChargeTypes_ChargeTypeId` FOREIGN KEY (`ChargeTypeId`) REFERENCES `PalmChargeTypes` (`Id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PalmBatchTransactions` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `BatchId` INT NOT NULL,
+    `TransactionId` INT NOT NULL,
+    PRIMARY KEY (`Id`),
+    KEY `IX_PalmBatchTransactions_BatchId` (`BatchId`),
+    KEY `IX_PalmBatchTransactions_TransactionId` (`TransactionId`),
+    CONSTRAINT `FK_PalmBatchTransactions_PalmBatches_BatchId`        FOREIGN KEY (`BatchId`)       REFERENCES `PalmBatches` (`Id`)  ON DELETE CASCADE,
+    CONSTRAINT `FK_PalmBatchTransactions_Transactions_TransactionId` FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`Id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `PalmPayouts` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `Number` VARCHAR(30) NOT NULL,
+    `BatchId` INT NOT NULL,
+    `OwnerId` INT NOT NULL,
+    `Date` DATE NOT NULL,
+    `Amount` DECIMAL(18,2) NOT NULL,
+    `AccountId` INT NOT NULL,
+    `Method` VARCHAR(20) NOT NULL,
+    `Reference` VARCHAR(50) NULL,
+    `TransactionId` INT NULL,
+    `IsVoided` TINYINT(1) NOT NULL,
+    `VoidReason` VARCHAR(300) NULL,
+    `VoidedAt` DATETIME(6) NULL,
+    `CreatedById` INT NOT NULL,
+    `CreatedAt` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`Id`),
+    UNIQUE KEY `IX_PalmPayouts_Number` (`Number`),
+    KEY `IX_PalmPayouts_BatchId_OwnerId` (`BatchId`, `OwnerId`),
+    KEY `IX_PalmPayouts_OwnerId` (`OwnerId`),
+    KEY `IX_PalmPayouts_AccountId` (`AccountId`),
+    KEY `IX_PalmPayouts_TransactionId` (`TransactionId`),
+    KEY `IX_PalmPayouts_CreatedById` (`CreatedById`),
+    CONSTRAINT `FK_PalmPayouts_PalmBatches_BatchId`         FOREIGN KEY (`BatchId`)       REFERENCES `PalmBatches` (`Id`)  ON DELETE RESTRICT,
+    CONSTRAINT `FK_PalmPayouts_PalmOwners_OwnerId`          FOREIGN KEY (`OwnerId`)       REFERENCES `PalmOwners` (`Id`)   ON DELETE RESTRICT,
+    CONSTRAINT `FK_PalmPayouts_Accounts_AccountId`          FOREIGN KEY (`AccountId`)     REFERENCES `Accounts` (`Id`)     ON DELETE RESTRICT,
+    CONSTRAINT `FK_PalmPayouts_Transactions_TransactionId`  FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`Id`) ON DELETE RESTRICT,
+    CONSTRAINT `FK_PalmPayouts_Users_CreatedById`           FOREIGN KEY (`CreatedById`)   REFERENCES `Users` (`Id`)        ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

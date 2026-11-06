@@ -127,7 +127,7 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
     // ------------------------------------------------------------------ helpers
 
     private const string SystemOnlyMessage =
-        "Rekod pinjaman diurus melalui menu Hutang kita (Pinjaman). Sila guna menu tersebut.";
+        "Rekod pinjaman diurus melalui menu Hutang kita (Pinjaman), dan rekod sawit melalui menu Agihan sawit. Sila guna menu tersebut.";
 
     /// <summary>Dokumen aktif yang menjana rekod ini (resit, bayaran hutang atau pinjaman), jika ada.</summary>
     private async Task<string?> LinkedSourceAsync(int transactionId)
@@ -152,7 +152,14 @@ public class TransactionsController(AppDbContext db, CurrentUser current, AuditS
         if (bill is not null) return $"bil utiliti {bill}";
 
         var claim = await db.Claims.Where(c => c.TransactionId == transactionId).Select(c => c.Number).FirstOrDefaultAsync();
-        return claim is not null ? $"tuntutan {claim}" : null;
+        if (claim is not null) return $"tuntutan {claim}";
+
+        var palmBatch = await db.PalmBatchTransactions.Where(p => p.TransactionId == transactionId && p.Batch!.Status == PalmBatchStatus.Posted)
+            .Select(p => p.Batch!.Number).FirstOrDefaultAsync();
+        if (palmBatch is not null) return $"bayaran kilang sawit {palmBatch}";
+
+        var palmPayout = await db.PalmPayouts.Where(p => p.TransactionId == transactionId && !p.IsVoided).Select(p => p.Number).FirstOrDefaultAsync();
+        return palmPayout is not null ? $"bayaran pemilik sawit {palmPayout}" : null;
     }
 
     /// <summary>Pekerja hanya nampak rekod yang dia sendiri masukkan.</summary>

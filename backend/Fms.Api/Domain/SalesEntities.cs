@@ -48,7 +48,9 @@ public enum DocumentType
     PayablePayment = 5,
     Payslip = 6,
     UtilityBill = 7,
-    Claim = 8
+    Claim = 8,
+    PalmBatch = 9,
+    PalmPayout = 10
 }
 
 /// <summary>Pelanggan (CRM).</summary>

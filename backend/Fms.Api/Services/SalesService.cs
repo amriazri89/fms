@@ -44,7 +44,8 @@ public class SalesService(
 
     public DocumentSettingsDto Settings() => new(_doc.TaxLabel, _doc.DefaultTaxRate, _doc.QuotationValidDays,
         _doc.PaymentTermDays, _doc.DefaultQuotationTerms, _doc.DefaultInvoiceTerms, _doc.ReceiptPrefix,
-        _doc.PayablePrefix, _doc.PaymentVoucherPrefix, _doc.PayslipPrefix, _doc.UtilityBillPrefix, _doc.ClaimPrefix, appOptions.Value.CompanyName);
+        _doc.PayablePrefix, _doc.PaymentVoucherPrefix, _doc.PayslipPrefix, _doc.UtilityBillPrefix, _doc.ClaimPrefix, appOptions.Value.CompanyName,
+        _doc.PalmBatchPrefix, _doc.PalmPayoutPrefix);
 
     // =====================================================================
     // Sebut harga

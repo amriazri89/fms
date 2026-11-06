@@ -17,12 +17,14 @@ public static class Ledger
             case TransactionType.Income:
             case TransactionType.OwnerCapital:
             case TransactionType.LoanIn:
+            case TransactionType.PalmIn:
                 yield return (t.AccountId, t.Channel, t.Amount);
                 break;
 
             case TransactionType.Expense:
             case TransactionType.OwnerWithdrawal:
             case TransactionType.LoanRepayment:
+            case TransactionType.PalmPayout:
                 yield return (t.AccountId, t.Channel, -t.Amount);
                 break;
 
@@ -51,7 +53,7 @@ public static class Ledger
     public static bool CountsAsProfit(TransactionType type) =>
         type is TransactionType.Income or TransactionType.Expense;
 
-    /// <summary>Jenis yang hanya dijana oleh modul Hutang, tidak boleh direkod / diubah terus.</summary>
+    /// <summary>Jenis yang hanya dijana oleh modul Hutang / Sawit, tidak boleh direkod / diubah terus.</summary>
     public static IReadOnlySet<TransactionType> SystemOnlyTypes { get; } =
-        new HashSet<TransactionType> { TransactionType.LoanIn, TransactionType.LoanRepayment };
+        new HashSet<TransactionType> { TransactionType.LoanIn, TransactionType.LoanRepayment, TransactionType.PalmIn, TransactionType.PalmPayout };
 }

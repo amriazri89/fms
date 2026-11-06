@@ -138,6 +138,14 @@ export default function DashboardPage() {
                   </div>
                   <ChannelSplit cash={data.totals.totalCash} bank={data.totals.totalBank} unlabelled={data.totals.totalUnlabelled} />
                 </li>
+                {Math.abs(data.totals.heldForPalmOwners) >= 0.005 && (
+                  <li className="pt-2 text-xs">
+                    <Link to="/sawit" className="flex items-center justify-between gap-2 rounded-xl bg-gold-50 px-3 py-2 text-gold-600 hover:underline">
+                      <span>Termasuk duit pemilik sawit belum dibayar</span>
+                      <Money value={data.totals.heldForPalmOwners} className="font-bold" />
+                    </Link>
+                  </li>
+                )}
               </ul>
             </Card>
           </div>

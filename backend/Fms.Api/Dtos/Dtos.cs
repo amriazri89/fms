@@ -73,7 +73,7 @@ public record PagedTransactions(IReadOnlyList<TransactionDto> Items, int Total, 
 // ---------- Dashboard & reports ----------
 public record PeriodDto(DateOnly From, DateOnly To);
 public record TotalsDto(decimal Income, decimal Expense, decimal Profit, decimal Withdrawals, decimal Capital, decimal TotalMoney,
-    decimal TotalCash, decimal TotalBank, decimal TotalUnlabelled);
+    decimal TotalCash, decimal TotalBank, decimal TotalUnlabelled, decimal HeldForPalmOwners);
 public record BusinessProfitDto(int BusinessUnitId, string Name, string? Color, decimal Income, decimal Expense, decimal Profit, decimal Withdrawals);
 /// <summary>Balance = Cash + Bank + Unlabelled (rekod lama tanpa label Tunai/Bank).</summary>
 public record AccountBalanceDto(int Id, string Name, AccountType Type, decimal Balance, bool IsLow,

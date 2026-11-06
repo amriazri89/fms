@@ -23,6 +23,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
     public DbSet<CreditSale> CreditSales => Set<CreditSale>();
+    public DbSet<PalmOwner> PalmOwners => Set<PalmOwner>();
+    public DbSet<PalmChargeType> PalmChargeTypes => Set<PalmChargeType>();
+    public DbSet<PalmBatch> PalmBatches => Set<PalmBatch>();
+    public DbSet<PalmTicket> PalmTickets => Set<PalmTicket>();
+    public DbSet<PalmTicketCharge> PalmTicketCharges => Set<PalmTicketCharge>();
+    public DbSet<PalmBatchTransaction> PalmBatchTransactions => Set<PalmBatchTransaction>();
+    public DbSet<PalmPayout> PalmPayouts => Set<PalmPayout>();
 
     // Pembekal & hutang kita
     public DbSet<Supplier> Suppliers => Set<Supplier>();
@@ -310,6 +317,79 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Transaction).WithMany().HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Agihan sawit
+        b.Entity<PalmOwner>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Phone).HasMaxLength(30);
+            e.Property(x => x.IcNumber).HasMaxLength(20);
+            e.Property(x => x.BankInfo).HasMaxLength(150);
+            e.Property(x => x.Notes).HasMaxLength(300);
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+        b.Entity<PalmChargeType>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.DefaultMethod).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.DefaultRate).HasPrecision(18, 4);
+            e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+        b.Entity<PalmBatch>(e =>
+        {
+            e.Property(x => x.Number).HasMaxLength(30).IsRequired();
+            e.Property(x => x.MillName).HasMaxLength(150).IsRequired();
+            e.Property(x => x.AmountReceived).HasPrecision(18, 2);
+            e.Property(x => x.Channel).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Reference).HasMaxLength(50);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.CancelReason).HasMaxLength(300);
+            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => x.Date);
+            e.HasOne(x => x.BusinessUnit).WithMany().HasForeignKey(x => x.BusinessUnitId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Tickets).WithOne(x => x.Batch).HasForeignKey(x => x.BatchId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Postings).WithOne(x => x.Batch).HasForeignKey(x => x.BatchId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<PalmTicket>(e =>
+        {
+            e.Property(x => x.TicketNo).HasMaxLength(50);
+            e.Property(x => x.WeightKg).HasPrecision(18, 2);
+            e.Property(x => x.PricePerTonne).HasPrecision(18, 2);
+            e.Property(x => x.Gross).HasPrecision(18, 2);
+            e.Property(x => x.Net).HasPrecision(18, 2);
+            e.HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Charges).WithOne(x => x.Ticket).HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<PalmTicketCharge>(e =>
+        {
+            e.Property(x => x.Method).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Rate).HasPrecision(18, 4);
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.HasOne(x => x.ChargeType).WithMany().HasForeignKey(x => x.ChargeTypeId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<PalmBatchTransaction>(e =>
+        {
+            e.HasOne(x => x.Transaction).WithMany().HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<PalmPayout>(e =>
+        {
+            e.Property(x => x.Number).HasMaxLength(30).IsRequired();
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Method).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Reference).HasMaxLength(50);
+            e.Property(x => x.VoidReason).HasMaxLength(300);
+            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => new { x.BatchId, x.OwnerId });
+            e.HasOne(x => x.Batch).WithMany().HasForeignKey(x => x.BatchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Transaction).WithMany().HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
         });

@@ -132,6 +132,31 @@ export const transactionTypes: TransactionTypeConfig[] = [
     fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional', channel: 'hidden', toChannel: 'hidden' },
     labels: { business: 'Perniagaan', account: 'Bayar guna', party: 'Pemberi pinjaman' },
   },
+  // Dua jenis di bawah dijana oleh menu "Agihan sawit" sahaja
+  {
+    type: 'PalmIn',
+    label: 'Duit Pemilik Sawit Masuk',
+    shortLabel: 'Duit pemilik',
+    help: 'Bahagian pemilik sawit daripada bayaran kilang. Dipegang untuk dibayar kepada pemilik — bukan pendapatan.',
+    sign: 1,
+    tone: 'neutral',
+    icon: '⬇',
+    allowedRoles: [],
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional', channel: 'required', toChannel: 'hidden' },
+    labels: { business: 'Perniagaan', account: 'Masuk ke', party: 'Kilang' },
+  },
+  {
+    type: 'PalmPayout',
+    label: 'Bayar Pemilik Sawit',
+    shortLabel: 'Bayar pemilik',
+    help: 'Bayaran duit sawit kepada pemiliknya. Bukan belanja.',
+    sign: -1,
+    tone: 'neutral',
+    icon: '⬆',
+    allowedRoles: [],
+    fields: { business: 'required', toBusiness: 'hidden', toAccount: 'hidden', category: 'hidden', familyMember: 'hidden', party: 'optional', channel: 'required', toChannel: 'hidden' },
+    labels: { business: 'Perniagaan', account: 'Bayar guna', party: 'Pemilik' },
+  },
 ]
 
 export const typeConfig = (t: TransactionType): TransactionTypeConfig =>

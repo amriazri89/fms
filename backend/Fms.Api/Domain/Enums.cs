@@ -1,6 +1,6 @@
 namespace Fms.Api.Domain;
 
-/// <summary>Dua pengguna: Pengurus (ayah) dan Kerani (anak).</summary>
+/// <summary>Dua peranan: Pengurus dan Kerani.</summary>
 public enum UserRole
 {
     /// <summary>Pengurus: semua tetapan, lulus tuntutan, padam rekod.</summary>
@@ -66,5 +66,11 @@ public enum TransactionType
     LoanIn = 7,
 
     /// <summary>Bayar balik pokok pinjaman. Bukan belanja (faedah direkod berasingan sebagai Duit keluar). Hanya dari modul Hutang.</summary>
-    LoanRepayment = 8
+    LoanRepayment = 8,
+
+    /// <summary>Duit pemilik sawit diterima dari kilang (dipegang, bukan pendapatan). Hanya dari modul Sawit.</summary>
+    PalmIn = 9,
+
+    /// <summary>Bayar duit pemilik sawit. Bukan belanja. Hanya dari modul Sawit.</summary>
+    PalmPayout = 10
 }

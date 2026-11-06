@@ -23,6 +23,8 @@ public static class DocumentNumbers
         DocumentType.Payslip => o.PayslipPrefix,
         DocumentType.UtilityBill => o.UtilityBillPrefix,
         DocumentType.Claim => o.ClaimPrefix,
+        DocumentType.PalmBatch => o.PalmBatchPrefix,
+        DocumentType.PalmPayout => o.PalmPayoutPrefix,
         _ => throw new ArgumentOutOfRangeException(nameof(type)),
     };
 

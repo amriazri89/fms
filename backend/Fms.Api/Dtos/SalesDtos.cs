@@ -10,7 +10,8 @@ public record SalesQuery(string? Q, int? CustomerId, int? BusinessUnitId, string
 
 public record DocumentSettingsDto(string TaxLabel, decimal DefaultTaxRate, int QuotationValidDays, int PaymentTermDays,
     string? DefaultQuotationTerms, string? DefaultInvoiceTerms, string ReceiptPrefix,
-    string PayablePrefix, string PaymentVoucherPrefix, string PayslipPrefix, string UtilityBillPrefix, string ClaimPrefix, string CompanyName);
+    string PayablePrefix, string PaymentVoucherPrefix, string PayslipPrefix, string UtilityBillPrefix, string ClaimPrefix, string CompanyName,
+    string PalmBatchPrefix, string PalmPayoutPrefix);
 
 public record ReasonInput([Required, MaxLength(300)] string Reason);
 

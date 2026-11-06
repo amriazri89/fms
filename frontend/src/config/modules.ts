@@ -2,12 +2,13 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 import type { UserRole } from '../api/types'
 import type { IconName } from '../components/Icon'
 
-export type ModuleGroup = 'kewangan' | 'laporan' | 'jualan' | 'hutang' | 'pekerja' | 'sistem'
+export type ModuleGroup = 'kewangan' | 'laporan' | 'jualan' | 'sawit' | 'hutang' | 'pekerja' | 'sistem'
 
 export const moduleGroups: { key: ModuleGroup; label: string }[] = [
   { key: 'kewangan', label: 'Kewangan' },
   { key: 'laporan', label: 'Laporan' },
   { key: 'jualan', label: 'Jualan & pelanggan' },
+  { key: 'sawit', label: 'Sawit' },
   { key: 'hutang', label: 'Pembekal, hutang & bil' },
   { key: 'pekerja', label: 'Pekerja & tuntutan' },
   { key: 'sistem', label: 'Sistem' },
@@ -58,6 +59,13 @@ export const modules: AppModule[] = [
   // ---------- Jualan & pelanggan
   { key: 'customers', path: '/pelanggan', label: 'Pelanggan', icon: 'users', roles: ALL, group: 'jualan', component: lazy(() => import('../pages/sales/CustomersPage')) },
   { key: 'customer', path: '/pelanggan/:id', label: 'Pelanggan', icon: 'users', roles: ALL, group: 'jualan', hidden: true, component: lazy(() => import('../pages/sales/CustomerDetailPage')) },
+
+  { key: 'palm', path: '/sawit', label: 'Agihan sawit', icon: 'truck', roles: ALL, group: 'sawit', component: lazy(() => import('../pages/palm/PalmBatchesPage')) },
+  { key: 'palm-owners', path: '/sawit/pemilik', label: 'Pemilik sawit', icon: 'users', roles: ALL, group: 'sawit', component: lazy(() => import('../pages/palm/PalmOwnersPage')) },
+  { key: 'palm-new', path: '/sawit/baru', label: 'Bayaran kilang baru', icon: 'truck', roles: ALL, group: 'sawit', hidden: true, component: lazy(() => import('../pages/palm/PalmBatchEditPage')) },
+  { key: 'palm-edit', path: '/sawit/:id/ubah', label: 'Ubah bayaran kilang', icon: 'truck', roles: ALL, group: 'sawit', hidden: true, component: lazy(() => import('../pages/palm/PalmBatchEditPage')) },
+  { key: 'palm-batch', path: '/sawit/:id', label: 'Bayaran kilang', icon: 'truck', roles: ALL, group: 'sawit', hidden: true, component: lazy(() => import('../pages/palm/PalmBatchPage')) },
+  { key: 'palm-slip', path: '/cetak-sawit/:batchId/:ownerId', label: 'Slip sawit', icon: 'printer', roles: ALL, group: 'sawit', hidden: true, bare: true, component: lazy(() => import('../pages/palm/PalmSlipPage')) },
 
   { key: 'credit-book', path: '/buku-hutang', label: 'Buku hutang (555)', icon: 'book', roles: ALL, group: 'jualan', component: lazy(() => import('../pages/creditbook/CreditBookPage')) },
   { key: 'credit-ledger', path: '/buku-hutang/:customerId/:businessUnitId', label: 'Buku hutang', icon: 'book', roles: ALL, group: 'jualan', hidden: true, component: lazy(() => import('../pages/creditbook/CreditLedgerPage')) },

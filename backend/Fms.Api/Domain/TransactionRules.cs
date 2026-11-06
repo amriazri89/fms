@@ -28,6 +28,8 @@ public static class TransactionRules
         [TransactionType.InternalLoan]    = new(FieldRule.Required, FieldRule.Required, FieldRule.Required, FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Required, FieldRule.Required),
         [TransactionType.LoanIn]          = new(FieldRule.Required, FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden),
         [TransactionType.LoanRepayment]   = new(FieldRule.Required, FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden),
+        [TransactionType.PalmIn]          = new(FieldRule.Required, FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Required),
+        [TransactionType.PalmPayout]      = new(FieldRule.Required, FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Hidden,   FieldRule.Required),
     };
 
     public static TransactionRule For(TransactionType type) =>

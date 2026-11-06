@@ -46,6 +46,8 @@ export default function TransactionsPage() {
     if (s && ref.startsWith(`${s.payslipPrefix}-`)) return { label: 'Dari slip gaji', note: 'batal melalui modul Gaji pekerja' }
     if (s && ref.startsWith(`${s.utilityBillPrefix}-`)) return { label: 'Dari bil utiliti', note: 'batal bayaran melalui modul Bil utiliti' }
     if (s && ref.startsWith(`${s.claimPrefix}-`)) return { label: 'Dari tuntutan', note: 'batal bayaran melalui modul Tuntutan' }
+    if (t.type === 'PalmPayout' || (s && ref.startsWith(`${s.palmPayoutPrefix}-`))) return { label: 'Dari bayaran pemilik sawit', note: 'batal melalui menu Agihan sawit' }
+    if (t.type === 'PalmIn' || (s && ref.startsWith(`${s.palmBatchPrefix}-`))) return { label: 'Dari bayaran kilang sawit', note: 'urus melalui menu Agihan sawit' }
     if (t.type === 'LoanIn' || t.type === 'LoanRepayment' || (s && ref.startsWith(`${s.payablePrefix}-`)))
       return { label: 'Dari pinjaman', note: 'urus melalui modul Hutang kita' }
     return null

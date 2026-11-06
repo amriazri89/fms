@@ -16,14 +16,14 @@ public class AppOptions
     /// <summary>Nama sistem / syarikat yang dicetak pada laporan, slip gaji dan penyata.</summary>
     public string CompanyName { get; set; } = "Ajib Business";
 
-    /// <summary>Pengurus (ayah) yang dicipta semasa seed pertama.</summary>
+    /// <summary>Pengurus yang dicipta semasa seed pertama.</summary>
     public string ManagerUsername { get; set; } = "pengurus";
-    public string ManagerFullName { get; set; } = "Ayah";
+    public string ManagerFullName { get; set; } = "Ajib";
     public string ManagerPassword { get; set; } = "";
 
-    /// <summary>Kerani (anak) yang dicipta semasa seed pertama.</summary>
+    /// <summary>Kerani yang dicipta semasa seed pertama.</summary>
     public string ClerkUsername { get; set; } = "kerani";
-    public string ClerkFullName { get; set; } = "Anak";
+    public string ClerkFullName { get; set; } = "Dayah";
     public string ClerkPassword { get; set; } = "";
 
     /// <summary>Folder simpanan resit tuntutan.</summary>
@@ -52,6 +52,10 @@ public class DocumentOptions
     public string UtilityBillPrefix { get; set; } = "BU";
     /// <summary>Tuntutan kewangan.</summary>
     public string ClaimPrefix { get; set; } = "TK";
+    /// <summary>Bayaran kilang sawit.</summary>
+    public string PalmBatchPrefix { get; set; } = "SW";
+    /// <summary>Bayaran kepada pemilik sawit.</summary>
+    public string PalmPayoutPrefix { get; set; } = "BS";
 
     /// <summary>Label cukai pada dokumen, contoh "SST".</summary>
     public string TaxLabel { get; set; } = "SST";
@@ -67,12 +71,12 @@ public class DocumentOptions
 
 public static class Policies
 {
-    /// <summary>Pengurus sahaja (ayah).</summary>
+    /// <summary>Pengurus sahaja.</summary>
     public const string Manager = "ManagerOnly";
 
     /// <summary>Pengurus atau Kerani.</summary>
     public const string AnyUser = "ManagerOrClerk";
 
-    /// <summary>Kerani sahaja (anak), contohnya memohon tuntutan.</summary>
+    /// <summary>Kerani sahaja, contohnya memohon tuntutan.</summary>
     public const string Clerk = "ClerkOnly";
 }
