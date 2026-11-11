@@ -132,6 +132,36 @@ function Editor({ existing }: { existing?: PalmBatch }) {
     if (!existing && tickets.length === 0 && !loadingTypes) setTickets([emptyTicket(date, chargeTypes)])
   }, [existing, tickets.length, loadingTypes, chargeTypes, date])
 
+  // Tiket lama / dipindah mungkin tiada baris caj: tambah setiap jenis caj aktif yang tiada (kadar lalai)
+  useEffect(() => {
+    if (chargeTypes.length === 0) return
+    setTickets((ts) => {
+      let changed = false
+      const next = ts.map((t) => {
+        const missing = chargeTypes.filter((ct) => ct.isActive && !t.charges.some((c) => c.chargeTypeId === ct.id))
+        if (missing.length === 0) return t
+        changed = true
+        const charges = [...t.charges, ...missing.map((ct) => ({ chargeTypeId: ct.id, method: ct.defaultMethod, rate: String(ct.defaultRate) }))]
+        const order = (id: number) => chargeTypes.find((ct) => ct.id === id)?.sortOrder ?? 0
+        return { ...t, charges: charges.sort((a, b) => order(a.chargeTypeId) - order(b.chargeTypeId)) }
+      })
+      return changed ? next : ts
+    })
+  }, [chargeTypes])
+
+  // Kadar pukal: isi satu kadar untuk semua tiket sekali gus
+  const [bulk, setBulk] = useState<Record<number, { method: ChargeMethod; rate: string }>>({})
+  const bulkOf = (ct: PalmChargeType) => bulk[ct.id] ?? { method: ct.defaultMethod, rate: String(ct.defaultRate) }
+  const applyBulk = (ct: PalmChargeType) => {
+    const { method, rate } = bulkOf(ct)
+    setTickets((ts) => ts.map((t) => ({
+      ...t,
+      charges: t.charges.some((c) => c.chargeTypeId === ct.id)
+        ? t.charges.map((c) => (c.chargeTypeId === ct.id ? { ...c, method, rate } : c))
+        : [...t.charges, { chargeTypeId: ct.id, method, rate }],
+    })))
+  }
+
   const mills = useMemo(() => [...new Set((summary?.batches ?? []).map((b) => b.millName))], [summary])
   const typeName = (id: number) => chargeTypes.find((t) => t.id === id)?.name ?? '?'
 
@@ -266,6 +296,29 @@ function Editor({ existing }: { existing?: PalmBatch }) {
         <div className="rounded-xl border border-gold-500/30 bg-gold-50 px-3 py-2 text-sm">
           Belum ada jenis caj (upah potong, transport). Pengurus boleh tambah di <Link to="/tetapan" className="font-semibold underline">Tetapan → Caj sawit</Link>.
         </div>
+      )}
+
+      {chargeTypes.some((ct) => ct.isActive) && tickets.length > 1 && (
+        <Card title="Kadar caj untuk semua tiket">
+          <p className="mb-3 text-sm text-muted">Isi kadar di sini dan tekan <b>Guna pada semua tiket</b>. Kadar setiap tiket masih boleh diubah satu-satu di bawah.</p>
+          <div className="space-y-3">
+            {chargeTypes.filter((ct) => ct.isActive).map((ct) => {
+              const v = bulkOf(ct)
+              return (
+                <Field key={ct.id} label={ct.name}>
+                  <div className="flex flex-wrap gap-2">
+                    <Select value={v.method} onChange={(e) => setBulk((b) => ({ ...b, [ct.id]: { ...v, method: e.target.value as ChargeMethod } }))} className="w-36 shrink-0">
+                      {chargeMethods.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </Select>
+                    <Input inputMode="decimal" value={v.rate} onChange={(e) => setBulk((b) => ({ ...b, [ct.id]: { ...v, rate: moneyInput(e.target.value) } }))} aria-label={`Kadar ${ct.name} (${chargeMethodUnit(v.method)})`} className="w-32" />
+                    <span className="flex items-center text-sm text-muted">{chargeMethodUnit(v.method)}</span>
+                    <Button type="button" variant="secondary" onClick={() => applyBulk(ct)}>Guna pada semua tiket</Button>
+                  </div>
+                </Field>
+              )
+            })}
+          </div>
+        </Card>
       )}
 
       <Card title={`Tiket kilang (${tickets.length})`} action={<Button type="button" variant="secondary" onClick={addTicket} className="min-h-[36px] px-3"><Icon name="plus" className="h-4 w-4" /> Tambah tiket</Button>}>
