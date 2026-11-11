@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAccounts, useBusinessUnits } from '../../api/hooks'
 import { usePalmBatch, usePalmChargeTypes, usePalmMutations, usePalmOwners, usePalmSummary } from '../../api/palmHooks'
@@ -162,6 +162,14 @@ function Editor({ existing }: { existing?: PalmBatch }) {
     })))
   }
 
+  const activeTypes = chargeTypes.filter((ct) => ct.isActive)
+
+  // Kumpulan ikut pemilik (ikut susunan tiket); carian pemilik / no. tiket
+  const [search, setSearch] = useState('')
+  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  const [changingOwner, setChangingOwner] = useState<Set<number>>(() => new Set())
+  const toggle = (id: string) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+
   const mills = useMemo(() => [...new Set((summary?.batches ?? []).map((b) => b.millName))], [summary])
   const typeName = (id: number) => chargeTypes.find((t) => t.id === id)?.name ?? '?'
 
@@ -173,6 +181,26 @@ function Editor({ existing }: { existing?: PalmBatch }) {
   const received = parseNum(amount)
   const difference = Math.round((received - totals.gross) * 100) / 100
 
+  const ownerName = (id: number | '') => (id === '' ? 'Belum pilih pemilik' : owners.find((o) => o.id === id)?.name ?? `Pemilik #${id}`)
+  const groups: TicketGroup[] = []
+  tickets.forEach((t, n) => {
+    const id = t.ownerId === '' ? 'none' : String(t.ownerId)
+    let g = groups.find((x) => x.id === id)
+    if (!g) groups.push((g = { id, ownerId: t.ownerId, name: ownerName(t.ownerId), rows: [], weight: 0, gross: 0, charges: 0, net: 0 }))
+    const c = computed[n]
+    g.rows.push({ t, n })
+    g.weight += c.weight
+    g.gross += c.gross
+    g.charges += c.totalCharges
+    g.net += c.net
+  })
+  const q = search.trim().toLowerCase()
+  const visibleGroups = q
+    ? groups
+        .map((g) => (g.name.toLowerCase().includes(q) ? g : { ...g, rows: g.rows.filter(({ t }) => t.ticketNo.toLowerCase().includes(q)) }))
+        .filter((g) => g.rows.length > 0)
+    : groups
+
   const update = (key: number, patch: Partial<TicketRow>) => setTickets((ts) => ts.map((t) => (t.key === key ? { ...t, ...patch } : t)))
   const updateCharge = (key: number, idx: number, patch: Partial<ChargeRow>) =>
     setTickets((ts) => ts.map((t) => (t.key === key ? { ...t, charges: t.charges.map((c, i) => (i === idx ? { ...c, ...patch } : c)) } : t)))
@@ -180,10 +208,13 @@ function Editor({ existing }: { existing?: PalmBatch }) {
     const owner = owners.find((o) => o.id === ownerId)
     // Pemilik ditukar → isi caj ikut kadar terakhir pemilik itu
     update(key, { ownerId, charges: defaultCharges(chargeTypes, owner) })
+    if (ownerId !== '') setOpen((s) => new Set(s).add(String(ownerId)))
   }
   const addTicket = () => {
     const last = tickets[tickets.length - 1]
     setTickets((ts) => [...ts, { ...emptyTicket(last?.date ?? date, chargeTypes), pricePerTonne: last?.pricePerTonne ?? '' }])
+    setOpen((s) => new Set(s).add('none'))
+    setSearch('')
   }
 
   const submit = async (e: FormEvent | null, andPost: boolean) => {
@@ -205,7 +236,11 @@ function Editor({ existing }: { existing?: PalmBatch }) {
     if (andPost && tickets.length === 0) err.tickets = 'Masukkan sekurang-kurangnya satu tiket.'
     if (andPost && difference !== 0) err.tickets = `Jumlah tiket mesti sama dengan amaun diterima (beza ${formatRM(difference)}).`
     setErrors(err)
-    if (Object.keys(err).length) return
+    if (Object.keys(err).length) {
+      const bad = new Set(Object.keys(err).map((k) => /^tickets\.(\d+)\./.exec(k)?.[1]).filter(Boolean).map(Number))
+      if (bad.size) setOpen((s) => { const n = new Set(s); bad.forEach((i) => n.add(tickets[i].ownerId === '' ? 'none' : String(tickets[i].ownerId))); return n })
+      return
+    }
 
     try {
       const saved = await save.mutateAsync({
@@ -298,114 +333,171 @@ function Editor({ existing }: { existing?: PalmBatch }) {
         </div>
       )}
 
-      {chargeTypes.some((ct) => ct.isActive) && tickets.length > 1 && (
-        <Card title="Kadar caj untuk semua tiket">
-          <p className="mb-3 text-sm text-muted">Isi kadar di sini dan tekan <b>Guna pada semua tiket</b>. Kadar setiap tiket masih boleh diubah satu-satu di bawah.</p>
-          <div className="space-y-3">
-            {chargeTypes.filter((ct) => ct.isActive).map((ct) => {
+      {/* Ringkasan */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Amaun kilang" value={received} />
+        <Stat label={`${tickets.length} tiket · ${formatKg(totals.weight)}`} value={totals.gross}
+          note={difference === 0 ? '✓ Sama dengan amaun kilang' : `Beza ${formatRM(difference)}`} noteTone={difference === 0 ? 'ok' : 'bad'} />
+        <Stat label="Caj → pendapatan" value={totals.charges} tone="income" />
+        <Stat label={`Untuk ${groups.filter((g) => g.ownerId !== '').length} pemilik`} value={totals.net} />
+      </div>
+
+      {activeTypes.length > 0 && tickets.length > 1 && (
+        <Card title="Kadar caj sekali gus">
+          <p className="mb-3 text-sm text-muted">Isi kadar dan tekan <b>Guna pada semua tiket</b>. Lepas itu, ubah tiket yang berbeza sahaja di bawah.</p>
+          <div className="divide-y divide-line/60">
+            {activeTypes.map((ct) => {
               const v = bulkOf(ct)
               return (
-                <Field key={ct.id} label={ct.name}>
-                  <div className="flex flex-wrap gap-2">
-                    <Select value={v.method} onChange={(e) => setBulk((b) => ({ ...b, [ct.id]: { ...v, method: e.target.value as ChargeMethod } }))} className="w-36 shrink-0">
-                      {chargeMethods.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </Select>
-                    <Input inputMode="decimal" value={v.rate} onChange={(e) => setBulk((b) => ({ ...b, [ct.id]: { ...v, rate: moneyInput(e.target.value) } }))} aria-label={`Kadar ${ct.name} (${chargeMethodUnit(v.method)})`} className="w-32" />
-                    <span className="flex items-center text-sm text-muted">{chargeMethodUnit(v.method)}</span>
-                    <Button type="button" variant="secondary" onClick={() => applyBulk(ct)}>Guna pada semua tiket</Button>
-                  </div>
-                </Field>
+                <div key={ct.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5 first:pt-0 last:pb-0">
+                  <span className="w-28 shrink-0 text-sm font-semibold">{ct.name}</span>
+                  <MethodPicker value={v.method} onChange={(method) => setBulk((b) => ({ ...b, [ct.id]: { ...v, method } }))} />
+                  <RateInput method={v.method} value={v.rate} onChange={(rate) => setBulk((b) => ({ ...b, [ct.id]: { ...v, rate } }))} label={ct.name} />
+                  <Button type="button" variant="secondary" className="min-h-[36px] px-3 text-sm" onClick={() => applyBulk(ct)}>Guna pada semua tiket</Button>
+                </div>
               )
             })}
           </div>
         </Card>
       )}
 
-      <Card title={`Tiket kilang (${tickets.length})`} action={<Button type="button" variant="secondary" onClick={addTicket} className="min-h-[36px] px-3"><Icon name="plus" className="h-4 w-4" /> Tambah tiket</Button>}>
-        <div className="space-y-3">
-          {tickets.map((t, n) => {
-            const c = computed[n]
-            const err = (f: string) => errors[`tickets.${n}.${f}`]
+      <Card
+        title={`Tiket kilang (${tickets.length})`}
+        action={<Button type="button" variant="secondary" onClick={addTicket} className="min-h-[36px] px-3"><Icon name="plus" className="h-4 w-4" /> Tambah tiket</Button>}
+      >
+        {tickets.length > 3 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px] flex-1">
+              <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari pemilik atau no. tiket" className="min-h-[40px] pl-9" />
+            </div>
+            <Button type="button" variant="secondary" className="min-h-[40px] px-3 text-sm" onClick={() => setOpen(new Set(groups.map((g) => g.id)))}>Buka semua</Button>
+            <Button type="button" variant="secondary" className="min-h-[40px] px-3 text-sm" onClick={() => setOpen(new Set())}>Tutup semua</Button>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {visibleGroups.map((g) => {
+            const isOpen = open.has(g.id) || !!search.trim() || groups.length === 1
+            const hasError = g.rows.some(({ n }) => Object.keys(errors).some((k) => k.startsWith(`tickets.${n}.`)))
             return (
-              <div key={t.key} className="rounded-2xl border border-line p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wide text-muted">Tiket {n + 1}</span>
-                  <button type="button" onClick={() => setTickets((ts) => ts.filter((x) => x.key !== t.key))} className="text-xs font-semibold text-muted hover:text-expense">
-                    Buang
-                  </button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                  <div className="sm:col-span-2">
-                    <Field label="Pemilik" required error={err('ownerId')}>
-                      <div className="flex gap-2">
-                        <Select value={t.ownerId} onChange={(e) => chooseOwner(t.key, e.target.value ? Number(e.target.value) : '')}>
-                          <option value="">— Pilih pemilik —</option>
-                          {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                        </Select>
-                        <Button type="button" variant="secondary" className="shrink-0" onClick={() => setAddingOwnerFor(t.key)}>Baru</Button>
-                      </div>
-                    </Field>
-                  </div>
-                  <Field label="No. tiket">
-                    <Input value={t.ticketNo} maxLength={50} onChange={(e) => update(t.key, { ticketNo: e.target.value })} />
-                  </Field>
-                  <Field label="Tarikh tiket">
-                    <Input type="date" value={t.date} max={today()} onChange={(e) => update(t.key, { date: e.target.value })} />
-                  </Field>
-                  <Field label="Berat (kg)" error={err('weightKg')}>
-                    <Input inputMode="decimal" value={t.weightKg} onChange={(e) => update(t.key, { weightKg: moneyInput(e.target.value) })} placeholder="0" />
-                  </Field>
-                  <Field label="Harga (RM/tan)">
-                    <Input inputMode="decimal" value={t.pricePerTonne} onChange={(e) => update(t.key, { pricePerTonne: moneyInput(e.target.value) })} placeholder="Pilihan" />
-                  </Field>
-                </div>
+              <div key={g.id} className={cx('overflow-hidden rounded-2xl border', hasError ? 'border-expense/50' : 'border-line')}>
+                <button
+                  type="button"
+                  onClick={() => toggle(g.id)}
+                  className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-brand-50/50 px-3 py-2.5 text-left hover:bg-brand-50"
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <Icon name="chevron" className={cx('h-4 w-4 shrink-0 text-muted transition-transform', isOpen && 'rotate-90')} />
+                    <span className="truncate font-semibold">{g.name}</span>
+                    <span className="shrink-0 text-xs text-muted">{g.rows.length} tiket · {formatKg(g.weight)}</span>
+                    {hasError && <span className="shrink-0 text-xs font-semibold text-expense">Perlu dibetulkan</span>}
+                  </span>
+                  <span className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums sm:text-sm">
+                    <span className="text-muted">Amaun <b className="text-ink">{formatRM(g.gross)}</b></span>
+                    <span className="text-muted">Caj <b className={g.charges > 0 ? 'text-income' : 'text-muted'}>{formatRM(g.charges)}</b></span>
+                    <span className="text-muted">Bersih <b className="text-ink">{formatRM(g.net)}</b></span>
+                  </span>
+                </button>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                  <div className="sm:col-span-2">
-                    <Field
-                      label="Amaun tiket (RM)"
-                      required
-                      error={err('gross')}
-                      hint={!t.grossManual && c.weight > 0 && c.price > 0 ? 'Dikira: berat × harga. Taip untuk tukar.' : undefined}
-                    >
-                      <Input
-                        inputMode="decimal"
-                        value={!t.grossManual && c.weight > 0 && c.price > 0 ? String(c.gross) : t.gross}
-                        onChange={(e) => update(t.key, { gross: moneyInput(e.target.value), grossManual: true })}
-                        placeholder="0.00"
-                        className="font-semibold tabular-nums"
-                      />
-                    </Field>
-                    {t.grossManual && c.weight > 0 && c.price > 0 && (
-                      <button type="button" className="mt-1 text-xs font-semibold text-brand-700 hover:underline" onClick={() => update(t.key, { grossManual: false })}>
-                        Kira semula dari berat × harga ({formatRM(palmGross(c.weight, c.price))})
-                      </button>
-                    )}
-                  </div>
-                  {t.charges.map((ch, i) => (
-                    <div key={ch.chargeTypeId} className="sm:col-span-2 lg:col-span-2">
-                      <Field label={typeName(ch.chargeTypeId)} error={i === 0 ? err('charges') : undefined}>
-                        <div className="flex gap-2">
-                          <Select value={ch.method} onChange={(e) => updateCharge(t.key, i, { method: e.target.value as ChargeMethod })} className="w-36 shrink-0">
-                            {chargeMethods.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                          </Select>
-                          <Input inputMode="decimal" value={ch.rate} onChange={(e) => updateCharge(t.key, i, { rate: moneyInput(e.target.value) })} aria-label={`Kadar ${chargeMethodUnit(ch.method)}`} />
-                          <span className="flex min-w-[88px] shrink-0 items-center justify-end text-sm font-semibold tabular-nums text-expense">−{formatRM(c.charges[i])}</span>
+                {isOpen && (
+                  <div className="divide-y divide-line/60">
+                    {g.rows.map(({ t, n }) => {
+                      const c = computed[n]
+                      const err = (f: string) => errors[`tickets.${n}.${f}`]
+                      const auto = !t.grossManual && c.weight > 0 && c.price > 0
+                      const showOwner = t.ownerId === '' || changingOwner.has(t.key) || !!err('ownerId')
+                      return (
+                        <div key={t.key} className="space-y-2.5 px-3 py-3">
+                          {showOwner && (
+                            <Mini label="Pemilik" error={err('ownerId')}>
+                              <div className="flex gap-1.5">
+                                <Select value={t.ownerId} onChange={(e) => chooseOwner(t.key, e.target.value ? Number(e.target.value) : '')} className={small}>
+                                  <option value="">— Pilih pemilik —</option>
+                                  {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                </Select>
+                                <Button type="button" variant="secondary" className="min-h-[38px] shrink-0 px-2.5 text-sm" onClick={() => setAddingOwnerFor(t.key)}>Baru</Button>
+                              </div>
+                            </Mini>
+                          )}
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))_auto]">
+                            <Mini label="No. tiket / lokasi">
+                              <Input value={t.ticketNo} maxLength={50} onChange={(e) => update(t.key, { ticketNo: e.target.value })} className={small} />
+                            </Mini>
+                            <Mini label="Tarikh">
+                              <Input type="date" value={t.date} max={today()} onChange={(e) => update(t.key, { date: e.target.value })} className={small} />
+                            </Mini>
+                            <Mini label="Berat (kg)" error={err('weightKg')}>
+                              <Input inputMode="decimal" value={t.weightKg} onChange={(e) => update(t.key, { weightKg: moneyInput(e.target.value) })} placeholder="0" className={cx(small, 'text-right tabular-nums')} />
+                            </Mini>
+                            <Mini label="RM / tan">
+                              <Input inputMode="decimal" value={t.pricePerTonne} onChange={(e) => update(t.key, { pricePerTonne: moneyInput(e.target.value) })} placeholder="—" className={cx(small, 'text-right tabular-nums')} />
+                            </Mini>
+                            <Mini label={auto ? 'Amaun (auto)' : 'Amaun (RM)'} error={err('gross')}>
+                              <Input
+                                inputMode="decimal"
+                                value={auto ? c.gross.toFixed(2) : t.gross}
+                                onChange={(e) => update(t.key, { gross: moneyInput(e.target.value), grossManual: true })}
+                                placeholder="0.00"
+                                title={auto ? 'Dikira: berat × harga. Taip untuk tukar.' : undefined}
+                                className={cx(small, 'text-right font-semibold tabular-nums')}
+                              />
+                              {t.grossManual && c.weight > 0 && c.price > 0 && (
+                                <button type="button" className="mt-0.5 text-[11px] font-semibold text-brand-700 hover:underline" onClick={() => update(t.key, { grossManual: false })}>
+                                  Guna berat × harga
+                                </button>
+                              )}
+                            </Mini>
+                            <div className="flex items-end justify-end gap-1 sm:col-span-5 lg:col-span-1">
+                              {t.ownerId !== '' && !showOwner && (
+                                <button
+                                  type="button"
+                                  title="Pindah tiket ini ke pemilik lain"
+                                  onClick={() => setChangingOwner((s) => new Set(s).add(t.key))}
+                                  className="grid h-[38px] w-[38px] place-items-center rounded-lg text-muted hover:bg-brand-50 hover:text-ink"
+                                >
+                                  <Icon name="user" className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                aria-label={`Buang tiket ${n + 1}`}
+                                title="Buang tiket"
+                                onClick={() => setTickets((ts) => ts.filter((x) => x.key !== t.key))}
+                                className="grid h-[38px] w-[38px] place-items-center rounded-lg text-muted hover:bg-red-50 hover:text-expense"
+                              >
+                                <Icon name="trash" className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {t.charges.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-gray-50 px-2.5 py-2">
+                              {t.charges.map((ch, i) => (
+                                <div key={ch.chargeTypeId} className="flex flex-wrap items-center gap-1.5">
+                                  <span className="w-24 text-xs font-semibold text-muted sm:w-auto">{typeName(ch.chargeTypeId)}</span>
+                                  <MethodPicker value={ch.method} onChange={(method) => updateCharge(t.key, i, { method })} />
+                                  <RateInput method={ch.method} value={ch.rate} onChange={(rate) => updateCharge(t.key, i, { rate })} label={typeName(ch.chargeTypeId)} />
+                                  <span className="w-20 text-right text-sm font-semibold tabular-nums text-expense">−{formatRM(c.charges[i])}</span>
+                                  {i < t.charges.length - 1 && <span className="mx-1 hidden h-5 w-px bg-line sm:block" />}
+                                </div>
+                              ))}
+                              <span className="ml-auto text-sm">
+                                Bersih <Money value={c.net} className={cx('font-bold', c.net < 0 ? 'text-expense' : 'text-ink')} />
+                              </span>
+                              {err('charges') && <span className="w-full text-xs font-medium text-expense">{err('charges')}</span>}
+                            </div>
+                          )}
                         </div>
-                      </Field>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-line/60 pt-2 text-sm">
-                  {c.weight > 0 && <span className="text-muted">{formatKg(c.weight)}</span>}
-                  <span className="text-muted">Caj <Money value={c.totalCharges} className="font-semibold text-ink" /></span>
-                  <span>Dibayar kepada pemilik <Money value={c.net} className={cx('font-bold', c.net < 0 ? 'text-expense' : 'text-ink')} /></span>
-                </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
           {tickets.length === 0 && <p className="text-sm text-muted">Belum ada tiket.</p>}
+          {tickets.length > 0 && visibleGroups.length === 0 && <p className="text-sm text-muted">Tiada tiket sepadan dengan carian.</p>}
           <Button type="button" variant="secondary" onClick={addTicket} className="w-full"><Icon name="plus" className="h-4 w-4" /> Tambah tiket</Button>
         </div>
       </Card>
@@ -448,5 +540,83 @@ function Editor({ existing }: { existing?: PalmBatch }) {
         )}
     </Modal>
     </>
+  )
+}
+
+interface TicketGroup {
+  id: string
+  ownerId: number | ''
+  name: string
+  rows: { t: TicketRow; n: number }[]
+  weight: number
+  gross: number
+  charges: number
+  net: number
+}
+
+const small = 'min-h-[38px] rounded-lg px-2.5 text-sm'
+
+function Mini({ label, error, className, children }: { label: string; error?: string; className?: string; children: ReactNode }) {
+  return (
+    <label className={cx('block min-w-0', className)}>
+      <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
+      {children}
+      {error && <span className="mt-0.5 block text-xs font-medium text-expense">{error}</span>}
+    </label>
+  )
+}
+
+function Stat({ label, value, tone, note, noteTone }: { label: string; value: number; tone?: 'income'; note?: string; noteTone?: 'ok' | 'bad' }) {
+  return (
+    <div className="rounded-2xl border border-line bg-white px-4 py-3 shadow-sm">
+      <div className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{label}</div>
+      <Money value={value} className={cx('mt-0.5 block text-xl font-extrabold', tone === 'income' && 'text-income')} />
+      {note && <div className={cx('text-xs font-semibold', noteTone === 'ok' ? 'text-income' : 'text-expense')}>{note}</div>}
+    </div>
+  )
+}
+
+const methodShort: Record<ChargeMethod, string> = { PerTonne: 'RM/tan', Fixed: 'RM', Percent: '%' }
+const methodHelp: Record<ChargeMethod, string> = { PerTonne: 'Ringgit setiap tan', Fixed: 'Amaun tetap (taip RM terus)', Percent: 'Peratus daripada amaun tiket' }
+
+/** Pilihan cara kira caj: RM/tan · RM tetap · %. */
+function MethodPicker({ value, onChange }: { value: ChargeMethod; onChange: (m: ChargeMethod) => void }) {
+  return (
+    <div role="radiogroup" className="inline-flex shrink-0 rounded-lg border border-line bg-white p-0.5">
+      {chargeMethods.map((m) => (
+        <button
+          key={m.value}
+          type="button"
+          role="radio"
+          aria-checked={value === m.value}
+          title={methodHelp[m.value]}
+          onClick={() => onChange(m.value)}
+          className={cx(
+            'min-h-[32px] rounded-md px-2.5 text-xs font-semibold transition',
+            value === m.value ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:bg-brand-50 hover:text-ink',
+          )}
+        >
+          {methodShort[m.value]}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function RateInput({ method, value, onChange, label }: { method: ChargeMethod; value: string; onChange: (v: string) => void; label: string }) {
+  const prefix = method === 'Percent' ? null : 'RM'
+  return (
+    <div className="relative w-28 shrink-0">
+      {prefix && <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">{prefix}</span>}
+      <Input
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(moneyInput(e.target.value))}
+        aria-label={`${label} (${chargeMethodUnit(method)})`}
+        placeholder="0"
+        className={cx('min-h-[36px] rounded-lg text-right text-sm tabular-nums', prefix ? 'pl-9 pr-2.5' : 'pl-2.5 pr-7')}
+      />
+      {method === 'Percent' && <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">%</span>}
+    </div>
   )
 }
