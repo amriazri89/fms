@@ -593,7 +593,9 @@ public class SalesService(
 
         if (inv is not null)
         {
-            inv.Payments.Add(p);
+            // db.Payments.Add di atas sudah memautkan resit ke inv.Payments (EF relationship fix-up).
+            // Tambah sekali lagi = resit dikira dua kali dalam AmountPaid.
+            if (!inv.Payments.Contains(p)) inv.Payments.Add(p);
             RecalculateInvoice(inv);
             inv.UpdatedAt = DateTime.UtcNow;
         }
@@ -602,7 +604,7 @@ public class SalesService(
 
     private static void RecalculateInvoice(Invoice inv)
     {
-        inv.AmountPaid = inv.Payments.Where(p => !p.IsVoided).Sum(p => p.Amount);
+        inv.AmountPaid = inv.Payments.Distinct().Where(p => !p.IsVoided).Sum(p => p.Amount);
         if (inv.Status != InvoiceStatus.Cancelled)
             inv.Status = DocumentMath.PaymentStatus(inv.Total, inv.AmountPaid);
     }
